@@ -1237,7 +1237,7 @@
       updateExpenseTotal();
     });
 
-  document.getElementById('document.getElementById('btn-save-settings').addEventListener('click', () => {
+document.getElementById('btn-save-settings').addEventListener('click', () => {
     appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
     appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
     appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
@@ -1245,29 +1245,14 @@
     appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
     appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
     appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
-    
-    // Trigger the automated calculation and database sync
-    updateDynamicBudget();
+
+    // Trigger calculation and sync
+    calculateMonthlyBudget(); 
     
     persist();
     renderAll();
     showToast('Settings saved & Budget updated!');
-  });').addEventListener('click', () => {
-  appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
-  appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
-  appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
-  appData.settings.expenses.boothRental = parseFloat(document.getElementById('set-booth').value) || 0;
-  appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
-  appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
-  appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
-  
-  // --- ADD THIS LINE HERE ---
-  updateDynamicBudget(); 
-  
-  persist();
-  renderAll();
-  showToast('Settings saved & Budget updated!');
-});
+  });
       showToast('Settings saved!');
     });
 
