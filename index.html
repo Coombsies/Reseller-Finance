@@ -1237,16 +1237,37 @@
       updateExpenseTotal();
     });
 
-    document.getElementById('btn-save-settings').addEventListener('click', () => {
-      appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
-      appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
-      appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
-      appData.settings.expenses.boothRental = parseFloat(document.getElementById('set-booth').value) || 0;
-      appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
-      appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
-      appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
-      persist();
-      renderAll();
+  document.getElementById('document.getElementById('btn-save-settings').addEventListener('click', () => {
+    appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
+    appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
+    appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
+    appData.settings.expenses.boothRental = parseFloat(document.getElementById('set-booth').value) || 0;
+    appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
+    appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
+    appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
+    
+    // Trigger the automated calculation and database sync
+    updateDynamicBudget();
+    
+    persist();
+    renderAll();
+    showToast('Settings saved & Budget updated!');
+  });').addEventListener('click', () => {
+  appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
+  appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
+  appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
+  appData.settings.expenses.boothRental = parseFloat(document.getElementById('set-booth').value) || 0;
+  appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
+  appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
+  appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
+  
+  // --- ADD THIS LINE HERE ---
+  updateDynamicBudget(); 
+  
+  persist();
+  renderAll();
+  showToast('Settings saved & Budget updated!');
+});
       showToast('Settings saved!');
     });
 
@@ -1855,7 +1876,31 @@
         goOffline();
       }
     })();
-
+// --- Dynamic Financial Brain ---
+async function calculateMonthlyBudget() {
+  // 1. Calculate values from your existing dashboard IDs
+  const revenue = parseFloat(document.getElementById('kpi-revenue').innerText.replace(/[^0-9.-]+/g, '')) || 0;
+  const cogs = parseFloat(document.getElementById('kpi-cogs').innerText.replace(/[^0-9.-]+/g, '')) || 0;
+  const expenses = parseFloat(document.getElementById('kpi-expenses').innerText.replace(/[^0-9.-]+/g, '')) || 0;
+  
+  const netProfit = revenue - cogs - expenses;
+  
+  // 2. Safety Net: 20% of net profit (if positive)
+  const safetyNet = netProfit > 0 ? (netProfit * 0.20) : 0;
+  
+  // 3. New Inventory Budget = Profit - Safety Net
+  const newInventoryBudget = netProfit - safetyNet;
+  
+  // 4. Update the Database
+  if (window.supabaseClient) {
+    const { error } = await window.supabaseClient
+      .from('settings')
+      .update({ inventory_budget: newInventoryBudget.toFixed(2) })
+      .eq('id', 1);
+      
+    if (!error) console.log("Budget updated to: $" + newInventoryBudget.toFixed(2));
+  }
+}
     // ===== INIT =====
     fabSale.style.display = 'none';
     fabImportCsv.style.display = 'none';
