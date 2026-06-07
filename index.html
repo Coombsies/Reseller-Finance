@@ -1693,18 +1693,28 @@ document.getElementById('btn-save-settings').addEventListener('click', () => {
         });
         imported++;
       });
+document.getElementById('btn-save-settings').addEventListener('click', async () => {
+    appData.settings.salaryGoal = parseFloat(document.getElementById('set-salary').value) || 0;
+    appData.settings.profitMargin = (parseFloat(document.getElementById('set-margin').value) || 50) / 100;
+    appData.settings.inventoryBudget = parseFloat(document.getElementById('set-inv-budget').value) || 0;
+    appData.settings.expenses.boothRental = parseFloat(document.getElementById('set-booth').value) || 0;
+    appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
+    appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
+    appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
 
-      persist();
-      closeModal('modal-import-csv');
-      renderAll();
-
-      if (duplicates > 0) {
-        showToast(`✅ ${imported} eBay sale${imported !== 1 ? 's' : ''} imported! (${duplicates} duplicate${duplicates !== 1 ? 's' : ''} skipped)`, '#22c55e');
-      } else {
-        showToast(`✅ ${imported} eBay sale${imported !== 1 ? 's' : ''} imported!`, '#22c55e');
-      }
+    persist();
+    renderAll();
+    
+    // Wait for Supabase to be ready if it's still loading
+    let retries = 0;
+    while (!window.supabaseClient && retries < 5) {
+        await new Promise(r => setTimeout(r, 500));
+        retries++;
     }
 
+    await calculateMonthlyBudget();
+    showToast('Settings saved & Budget updated!');
+});
     // ================================================================
     // ===== PWA: Icon, Manifest, Service Worker =====
     // ================================================================
