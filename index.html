@@ -1245,16 +1245,14 @@ document.getElementById('btn-save-settings').addEventListener('click', () => {
     appData.settings.expenses.listPerfectly = parseFloat(document.getElementById('set-lp').value) || 0;
     appData.settings.expenses.ebayStore = parseFloat(document.getElementById('set-ebay').value) || 0;
     appData.settings.expenses.boltonStorage = parseFloat(document.getElementById('set-bolton').value) || 0;
-
+    
     // Trigger calculation and sync
-    calculateMonthlyBudget(); 
+    calculateMonthlyBudget();
     
     persist();
     renderAll();
     showToast('Settings saved & Budget updated!');
-  });
-      showToast('Settings saved!');
-    });
+});
 
     // ===== RESET MONTH =====
     document.getElementById('btn-reset-month').addEventListener('click', () => {
