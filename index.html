@@ -1,27 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Inventory App</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Inventory Manager</title>
 </head>
 <body>
-    <div class="app-container">
-        <h1>Inventory Manager</h1>
-
-        <div class="upload-section">
-            <label for="csvFile">Upload CSV:</label>
-            <input type="file" id="csvFile" accept=".csv" />
-            <button id="loadBtn">Load</button>
-        </div>
-
-        <div class="table-container">
-            <table id="dataTable"></table>
-        </div>
-
-        <button id="downloadBtn" class="download-btn">Download Updated CSV</button>
+    <h1>Inventory Manager</h1>
+    
+    <div>
+        <label>Upload CSV:</label>
+        <input type="file" id="csvFile" accept=".csv">
+        <button id="loadBtn">Load</button>
     </div>
+    
+    <div style="margin-top: 10px;">
+        <button id="downloadBtn">Download Updated CSV</button>
+    </div>
+
+    <div id="financialSummary" style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
+        <h3>Monthly Financial Report</h3>
+        <p>Total Profit: <span id="totalProfit">$0.00</span></p>
+        <p>Business Savings (20%): <span id="savingsAmount">$0.00</span></p>
+        <p><strong>New Spending Budget (80%): <span id="budgetAmount">$0.00</span></strong></p>
+    </div>
+
+    <table id="dataTable" border="1" style="margin-top: 20px; width: 100%;"></table>
 
     <script src="app.js"></script>
 </body>
