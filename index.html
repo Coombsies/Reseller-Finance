@@ -1910,47 +1910,20 @@ const waitForSupabase = async () => {
     if (window.supabaseClient) {
         console.log("Supabase connected! Fetching data...");
         try {
-            // Fetch Settings
-            const { data: settings } = await window.supabaseClient.from('settings').select('*').eq('id', 1).single();
-            if (settings) {
-                appData.settings.inventoryBudget = settings.inventory_budget;
-            }
-            
-            // Fetch Sales
-            const { data: sales } = await window.supabaseClient.from('sales').select('*');
-            if (sales) {
-                window.appData.sales = sales;
-                console.log("Sales loaded from cloud!");
-            }
-        } catch (e) {
-            console.error("Cloud fetch failed:", e);
-        }
-    } else {
-        console.warn("Supabase failed to connect.");
-    }
-    
-    // 3. Set Date and Render
-    window.currentMonth = 5; 
-    window.currentYear = 2026;
-    const header = document.getElementById('dash-month-title');
-    if (header) header.innerText = "June 2026";
-    
-    renderAll();
-    switchTab('dashboard');
-};
-
-// Start the sequence
-const script = document.createElement('script');
-script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-script.onload = () => {
-    window.supabaseClient = supabase.createClient(
-        'https://dzvgbytxbifhnxckmiih.supabase.co', 
-        'sb_publishable_pvsbykWKiWvRUZsWiabvIQ_pMIRKZ2R'
-    );
-};
-document.head.appendChild(script);
-
-waitForSupabase();
+           // Fetch Sales
+const { data: sales, error } = await window.supabaseClient.from('sales').select('*');
+if (sales) {
+    // We must map the cloud format to your app's local format
+    appData.salesLog['2026-06'] = sales.map(s => ({
+        itemName: s.itemName || s.item_name,
+        platform: s.platform,
+        salePrice: parseFloat(s.salePrice || s.sale_price),
+        cogs: parseFloat(s.cogs),
+        date: s.date,
+        notes: s.notes
+    }));
+    console.log("Sales mapped and loaded:", appData.salesLog['2026-06'].length);
+}
   
 </body>
 </html>
