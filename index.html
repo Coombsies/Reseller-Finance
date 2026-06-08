@@ -86,3 +86,43 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
+<section id="allocationPanel" class="card">
+    <h2>Monthly Allocation</h2>
+
+    <label for="salaryGoal">Salary Goal ($):</label>
+    <input type="number" id="salaryGoal" value="4400" />
+
+    <div class="allocation-row">
+        <span>Salary Progress:</span>
+        <div class="progress-bar">
+            <div id="salaryProgressFill"></div>
+        </div>
+        <span id="salaryProgressPercent">0%</span>
+    </div>
+
+    <div class="allocation-row">
+        <span>Remaining Profit After Salary:</span>
+        <span id="remainingProfit">$0</span>
+    </div>
+
+    <div class="allocation-row">
+        <span>Sourcing Fund (75%):</span>
+        <span id="sourcingFund">$0</span>
+    </div>
+
+    <div class="allocation-row">
+        <span>Business Savings (25%):</span>
+        <span id="businessSavings">$0</span>
+    </div>
+
+    <button id="generateReportBtn">Generate Monthly Report</button>
+</section>
+
+<!-- Modal -->
+<div id="reportModal" class="modal">
+    <div class="modal-content">
+        <h2>Monthly Report</h2>
+        <div id="reportBody"></div>
+        <button id="closeReport">Close</button>
+    </div>
+</div>
