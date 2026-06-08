@@ -1894,13 +1894,11 @@ async function calculateMonthlyBudget() {
     if (!error) console.log("Budget updated to: $" + newInventoryBudget.toFixed(2));
   }
 }
-    // ===== INIT =====
 // ===== IMPROVED INIT =====
 const waitForSupabase = async () => {
     // 1. Initial UI setup
     fabSale.style.display = 'none';
     fabImportCsv.style.display = 'none';
-    forceDate();
     
     // 2. Wait for Supabase to be ready
     let retries = 0;
@@ -1931,7 +1929,12 @@ const waitForSupabase = async () => {
         console.warn("Supabase failed to connect.");
     }
     
-    // 3. Render once data is ready
+    // 3. Set Date and Render
+    window.currentMonth = 5; 
+    window.currentYear = 2026;
+    const header = document.getElementById('dash-month-title');
+    if (header) header.innerText = "June 2026";
+    
     renderAll();
     switchTab('dashboard');
 };
@@ -1948,6 +1951,6 @@ script.onload = () => {
 document.head.appendChild(script);
 
 waitForSupabase();
-  </script>
+  
 </body>
 </html>
