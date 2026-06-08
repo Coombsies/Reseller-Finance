@@ -1896,9 +1896,9 @@ async function calculateMonthlyBudget() {
 }
 // --- FIXED: Async Data Fetch ---
 async function fetchAndRender() {
-    console.log("Waiting for Supabase client...");
+    console.log("Waiting for Supabase...");
     
-    // Wait up to 5 seconds for the client to be ready
+    // 1. Wait for Supabase to be ready
     let attempts = 0;
     while (!window.supabaseClient && attempts < 10) {
         await new Promise(r => setTimeout(r, 500));
@@ -1909,15 +1909,31 @@ async function fetchAndRender() {
         console.log("Supabase ready. Fetching sales...");
         const { data: sales, error } = await window.supabaseClient.from('sales').select('*');
         
-        if (sales) {
+        if (sales && sales.length > 0) {
+            console.log("Data found, mapping:", sales.length, "rows");
+            
+            // Map the data to your app's internal format
             appData.salesLog['2026-06'] = sales.map(s => ({
-                itemName: s.itemName || s.item_name,
-                platform: s.platform,
-                salePrice: parseFloat(s.salePrice || s.sale_price) || 0,
+                itemName: s.item_name || s.itemName || "Unnamed Item",
+                platform: s.platform || "eBay",
+                salePrice: parseFloat(s.sale_price || s.salePrice) || 0,
                 cogs: parseFloat(s.cogs) || 0,
                 date: s.date,
-                notes: s.notes
+                notes: s.notes || ""
             }));
+            
+            // CRITICAL: Force the UI to refresh
+            window.localStorage.setItem('reseller_data', JSON.stringify(appData));
+            location.reload(); 
+        } else {
+            console.warn("No sales found or error:", error);
+        }
+    } else {
+        console.error("Supabase client never initialized.");
+    }
+}
+
+fetchAndRender();
             console.log("Sales mapped successfully:", appData.salesLog['2026-06'].length);
             renderAll(); // Now we render only after data is ready
         } else {
