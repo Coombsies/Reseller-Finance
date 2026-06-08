@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory App</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app-container">
+        <h1>Inventory Manager</h1>
+
+        <div class="upload-section">
+            <label for="csvFile">Upload CSV:</label>
+            <input type="file" id="csvFile" accept=".csv" />
+            <button id="loadBtn">Load</button>
+        </div>
+
+        <div class="table-container">
+            <table id="dataTable"></table>
+        </div>
+
+        <button id="downloadBtn" class="download-btn">Download Updated CSV</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
