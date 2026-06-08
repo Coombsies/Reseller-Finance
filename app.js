@@ -206,3 +206,72 @@ function updateStats(sales, expenses) {
 }
 
 refreshData().catch(console.error);
+// ===============================
+// MONTHLY ALLOCATION ENGINE
+// ===============================
+
+// Load saved salary goal
+const salaryGoalInput = document.getElementById("salaryGoal");
+salaryGoalInput.value = localStorage.getItem("salaryGoal") || 4400;
+
+// Update salary goal when changed
+salaryGoalInput.addEventListener("input", () => {
+    localStorage.setItem("salaryGoal", salaryGoalInput.value);
+    updateAllocationPanel();
+});
+
+// Main update function
+function updateAllocationPanel() {
+    const salaryGoal = Number(salaryGoalInput.value);
+    const netProfit = totalSales - totalExpenses;
+
+    // Salary progress
+    const progress = Math.max(0, Math.min(1, netProfit / salaryGoal));
+    document.getElementById("salaryProgressFill").style.width = (progress * 100) + "%";
+    document.getElementById("salaryProgressPercent").textContent = Math.round(progress * 100) + "%";
+
+    // Remaining profit after salary
+    const remaining = Math.max(0, netProfit - salaryGoal);
+    document.getElementById("remainingProfit").textContent = "$" + remaining.toFixed(2);
+
+    // 75/25 split
+    const sourcing = remaining * 0.75;
+    const savings = remaining * 0.25;
+
+    document.getElementById("sourcingFund").textContent = "$" + sourcing.toFixed(2);
+    document.getElementById("businessSavings").textContent = "$" + savings.toFixed(2);
+}
+
+// Hook into your existing updateTotals() function
+const originalUpdateTotals = updateTotals;
+updateTotals = function() {
+    originalUpdateTotals();
+    updateAllocationPanel();
+};
+
+// ===============================
+// MONTHLY REPORT MODAL
+// ===============================
+
+document.getElementById("generateReportBtn").addEventListener("click", () => {
+    const salaryGoal = Number(salaryGoalInput.value);
+    const netProfit = totalSales - totalExpenses;
+    const remaining = Math.max(0, netProfit - salaryGoal);
+
+    const reportHTML = `
+        <p><strong>Total Sales:</strong> $${totalSales.toFixed(2)}</p>
+        <p><strong>Total Expenses:</strong> $${totalExpenses.toFixed(2)}</p>
+        <p><strong>Net Profit:</strong> $${netProfit.toFixed(2)}</p>
+        <p><strong>Salary Goal:</strong> $${salaryGoal.toFixed(2)}</p>
+        <p><strong>Remaining Profit:</strong> $${remaining.toFixed(2)}</p>
+        <p><strong>Sourcing Fund (75%):</strong> $${(remaining * 0.75).toFixed(2)}</p>
+        <p><strong>Business Savings (25%):</strong> $${(remaining * 0.25).toFixed(2)}</p>
+    `;
+
+    document.getElementById("reportBody").innerHTML = reportHTML;
+    document.getElementById("reportModal").style.display = "block";
+});
+
+document.getElementById("closeReport").addEventListener("click", () => {
+    document.getElementById("reportModal").style.display = "none";
+});
