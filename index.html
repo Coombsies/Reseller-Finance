@@ -1895,19 +1895,48 @@ async function calculateMonthlyBudget() {
   }
 }
     // ===== INIT =====
+// ===== IMPROVED INIT =====
+const waitForSupabase = async () => {
+    // 1. Initial UI setup
     fabSale.style.display = 'none';
     fabImportCsv.style.display = 'none';
+    forceDate();
+    
+    // 2. Wait for Supabase to be ready
+    let retries = 0;
+    while (!window.supabaseClient && retries < 10) {
+        await new Promise(r => setTimeout(r, 500));
+        retries++;
+    }
+    
+    if (window.supabaseClient) {
+        console.log("Supabase connected! Fetching data...");
+        try {
+            // Fetch Settings
+            const { data: settings } = await window.supabaseClient.from('settings').select('*').eq('id', 1).single();
+            if (settings) {
+                appData.settings.inventoryBudget = settings.inventory_budget;
+            }
+            
+            // Fetch Sales
+            const { data: sales } = await window.supabaseClient.from('sales').select('*');
+            if (sales) {
+                window.appData.sales = sales;
+                console.log("Sales loaded from cloud!");
+            }
+        } catch (e) {
+            console.error("Cloud fetch failed:", e);
+        }
+    } else {
+        console.warn("Supabase failed to connect.");
+    }
+    
+    // 3. Render once data is ready
     renderAll();
     switchTab('dashboard');
-// Force the app to use June 2026
-const forceDate = () => {
-    window.currentMonth = 5; // 0=Jan, 5=June
-    window.currentYear = 2026;
-    console.log("Date forced to June 2026");
 };
-forceDate();
 
-// Bridge to Supabase
+// Start the sequence
 const script = document.createElement('script');
 script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 script.onload = () => {
@@ -1916,7 +1945,9 @@ script.onload = () => {
         'sb_publishable_pvsbykWKiWvRUZsWiabvIQ_pMIRKZ2R'
     );
 };
-document.head.appendChild(script); 
+document.head.appendChild(script);
+
+waitForSupabase();
   </script>
 </body>
 </html>
