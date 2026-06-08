@@ -1894,23 +1894,7 @@ async function calculateMonthlyBudget() {
     if (!error) console.log("Budget updated to: $" + newInventoryBudget.toFixed(2));
   }
 }
-// ===== IMPROVED INIT =====
-const waitForSupabase = async () => {
-    // 1. Initial UI setup
-    fabSale.style.display = 'none';
-    fabImportCsv.style.display = 'none';
-    
-    // 2. Wait for Supabase to be ready
-    let retries = 0;
-    while (!window.supabaseClient && retries < 10) {
-        await new Promise(r => setTimeout(r, 500));
-        retries++;
-    }
-    
-    if (window.supabaseClient) {
-        console.log("Supabase connected! Fetching data...");
-        try {
-           // Fetch Sales
+// Fetch Sales
 const { data: sales, error } = await window.supabaseClient.from('sales').select('*');
 if (sales) {
     // We must map the cloud format to your app's local format
@@ -1924,6 +1908,6 @@ if (sales) {
     }));
     console.log("Sales mapped and loaded:", appData.salesLog['2026-06'].length);
 }
-  
+  </script>
 </body>
 </html>
