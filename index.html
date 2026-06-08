@@ -1894,20 +1894,41 @@ async function calculateMonthlyBudget() {
     if (!error) console.log("Budget updated to: $" + newInventoryBudget.toFixed(2));
   }
 }
-// Fetch Sales
-const { data: sales, error } = await window.supabaseClient.from('sales').select('*');
-if (sales) {
-    // We must map the cloud format to your app's local format
-    appData.salesLog['2026-06'] = sales.map(s => ({
-        itemName: s.itemName || s.item_name,
-        platform: s.platform,
-        salePrice: parseFloat(s.salePrice || s.sale_price),
-        cogs: parseFloat(s.cogs),
-        date: s.date,
-        notes: s.notes
-    }));
-    console.log("Sales mapped and loaded:", appData.salesLog['2026-06'].length);
+// --- FIXED: Async Data Fetch ---
+async function fetchAndRender() {
+    console.log("Waiting for Supabase client...");
+    
+    // Wait up to 5 seconds for the client to be ready
+    let attempts = 0;
+    while (!window.supabaseClient && attempts < 10) {
+        await new Promise(r => setTimeout(r, 500));
+        attempts++;
+    }
+
+    if (window.supabaseClient) {
+        console.log("Supabase ready. Fetching sales...");
+        const { data: sales, error } = await window.supabaseClient.from('sales').select('*');
+        
+        if (sales) {
+            appData.salesLog['2026-06'] = sales.map(s => ({
+                itemName: s.itemName || s.item_name,
+                platform: s.platform,
+                salePrice: parseFloat(s.salePrice || s.sale_price) || 0,
+                cogs: parseFloat(s.cogs) || 0,
+                date: s.date,
+                notes: s.notes
+            }));
+            console.log("Sales mapped successfully:", appData.salesLog['2026-06'].length);
+            renderAll(); // Now we render only after data is ready
+        } else {
+            console.error("Supabase fetch error:", error);
+        }
+    } else {
+        console.error("Supabase client never initialized.");
+    }
 }
+
+fetchAndRender();
   </script>
 </body>
 </html>
