@@ -275,3 +275,44 @@ document.getElementById("generateReportBtn").addEventListener("click", () => {
 document.getElementById("closeReport").addEventListener("click", () => {
     document.getElementById("reportModal").style.display = "none";
 });
+// ===============================
+// MONTH DISPLAY
+// ===============================
+
+function getCurrentMonthString() {
+    const now = new Date();
+    const month = now.toLocaleString("default", { month: "long" });
+    const year = now.getFullYear();
+    return `${month} ${year}`;
+}
+
+// Load month on startup
+if (!localStorage.getItem("currentMonth")) {
+    localStorage.setItem("currentMonth", getCurrentMonthString());
+}
+
+document.getElementById("currentMonth").textContent =
+    "Current Month: " + localStorage.getItem("currentMonth");
+
+// Reset month
+document.getElementById("resetMonth").addEventListener("click", () => {
+    if (!confirm("Are you sure you want to reset the month?")) return;
+
+    // Clear tables
+    sales = [];
+    expenses = [];
+    totalTime = 0;
+
+    localStorage.removeItem("sales");
+    localStorage.removeItem("expenses");
+    localStorage.removeItem("totalTime");
+
+    // Update month
+    const newMonth = getCurrentMonthString();
+    localStorage.setItem("currentMonth", newMonth);
+    document.getElementById("currentMonth").textContent =
+        "Current Month: " + newMonth;
+
+    updateTotals();
+    updateAllocationPanel();
+});
