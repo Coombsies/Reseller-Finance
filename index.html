@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reseller Finance Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+/* ------------------------------
+   MASCULINE GUNMETAL + COBALT THEME
+--------------------------------*/
+:root {
+    --bg: #0b0e13;            /* deep gunmetal */
+    --panel: #141820;         /* charcoal */
+    --panel-light: #1c222d;   /* lighter gunmetal */
+    --border: #2a3240;        /* steel border */
+    --text: #e5e7eb;          /* light gray */
+    --text-muted: #9ca3af;    /* muted gray */
+    --accent: #3b82f6;        /* cobalt blue */
+    --accent-soft: #60a5fa;   /* soft cobalt */
+    --profit: #22c55e;        /* toxic green */
+    --loss: #ef4444;          /* hazard red */
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ------------------------------
+   HEADER
+--------------------------------*/
+header {
+    background: #0f131a;
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    letter-spacing: 0.04em;
+    color: var(--accent-soft);
+}
+
+header .sub {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ------------------------------
+   SUMMARY BAR
+--------------------------------*/
+.summary-bar {
+    display: flex;
+    gap: 20px;
+    padding: 20px 30px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+}
+
+.summary-card {
+    flex: 1;
+    background: var(--panel-light);
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+}
+
+.summary-value {
+    margin-top: 6px;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.summary-value.positive { color: var(--profit); }
+.summary-value.negative { color: var(--loss); }
+
+/* ------------------------------
+   LAYOUT
+--------------------------------*/
+.layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: calc(100vh - 160px);
+}
+
+.sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.sidebar h2 {
+    font-size: 1rem;
+    margin: 0 0 12px;
+    color: var(--accent-soft);
+}
+
+.sidebar label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.sidebar input,
+.sidebar button {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.sidebar input[type="month"],
+.sidebar input[type="file"] {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 6px;
+}
+
+button {
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: #0b0e13;
+}
+
+.btn-danger {
+    background: var(--loss);
+    color: #0b0e13;
+}
+
+.btn-secondary {
+    background: var(--panel-light);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+/* ------------------------------
+   MAIN TABLE
+--------------------------------*/
+.main {
+    padding: 20px 30px;
+    overflow-y: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+thead {
+    background: #11161f;
+}
+
+th {
+    padding: 10px;
+    text-align: left;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+tbody tr:nth-child(even) {
+    background: #0f131a;
+}
+
+tbody tr:nth-child(odd) {
+    background: #141820;
+}
+
+tbody tr.profit-positive {
+    border-left: 4px solid var(--profit);
+}
+
+tbody tr.profit-negative {
+    border-left: 4px solid var(--loss);
+}
+
+.amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<header>
+    <h1>Reseller Finance Dashboard</h1>
+    <div class="sub">Gunmetal + Cobalt Edition</div>
+</header>
+
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+    <div class="summary-card">
+        <div class="summary-label">Total Sales</div>
+        <div class="summary-value" id="totalSales">$0.00</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Total Cost</div>
+        <div class="summary-value" id="totalCost">$0.00</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-label">Net Profit</div>
+        <div class="summary-value" id="netProfit">$0.00</div>
+    </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h2>Filters</h2>
+
+        <label>Month</label>
+        <input type="month" id="monthInput">
+
+        <br><br>
+
+        <h2>CSV Upload</h2>
+        <input type="file" id="csvFileInput" accept=".csv">
+        <button class="btn-primary" id="uploadCsvBtn">Upload CSV</button>
+
+        <br><br>
+
+        <button class="btn-secondary" id="addSampleBtn">Add Sample Row</button>
+        <button class="btn-danger" id="clearAllBtn">Clear All</button>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <h2 style="color:var(--accent-soft);margin:0 0 10px;">Sales Table</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Platform</th>
+                    <th>Item</th>
+                    <th>Cost</th>
+                    <th>Shipping</th>
+                    <th>Fees</th>
+                    <th>Sale</th>
+                    <th>Profit</th>
+                </tr>
+            </thead>
+            <tbody id="salesTableBody">
+                <tr><td colspan="8" class="empty">No sales yet.</td></tr>
+            </tbody>
+        </table>
+    </main>
+
+</div>
+
+<script>
+/* ------------------------------
+   DATA STORAGE
+--------------------------------*/
+const sales = [];
+
+/* ------------------------------
+   HELPERS
+--------------------------------*/
+function formatCurrency(v) {
+    return "$" + v.toFixed(2);
+}
+
+function monthKey(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+
+/* ------------------------------
+   RENDER TABLE
+--------------------------------*/
+function renderTable() {
+    const tbody = document.getElementById("salesTableBody");
+    tbody.innerHTML = "";
+
+    const activeMonth = document.getElementById("monthInput").value;
+    const filtered = sales.filter(s => monthKey(s.date) === activeMonth);
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">No sales for this month.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(s => {
+        const profit = s.salePrice - (s.cost + s.shipping + s.fees);
+        const tr = document.createElement("tr");
+
+        if (profit > 0) tr.classList.add("profit-positive");
+        else if (profit < 0) tr.classList.add("profit-negative");
+
+        tr.innerHTML = `
+            <td>${s.date}</td>
+            <td>${s.platform}</td>
+            <td>${s.item}</td>
+            <td class="amount">${formatCurrency(s.cost)}</td>
+            <td class="amount">${formatCurrency(s.shipping)}</td>
+            <td class="amount">${formatCurrency(s.fees)}</td>
+            <td class="amount">${formatCurrency(s.salePrice)}</td>
+            <td class="amount">${formatCurrency(profit)}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+/* ------------------------------
+   TOTALS
+--------------------------------*/
+function updateTotals() {
+    const activeMonth = document.getElementById("monthInput").value;
+    const filtered = sales.filter(s => monthKey(s.date) === activeMonth);
+
+    let totalSales = 0, totalCost = 0, netProfit = 0;
+
+    filtered.forEach(s => {
+        const costTotal = s.cost + s.shipping + s.fees;
+        totalSales += s.salePrice;
+        totalCost += costTotal;
+        netProfit += (s.salePrice - costTotal);
+    });
+
+    const ts = document.getElementById("totalSales");
+    const tc = document.getElementById("totalCost");
+    const np = document.getElementById("netProfit");
+
+    ts.textContent = formatCurrency(totalSales);
+    tc.textContent = formatCurrency(totalCost);
+    np.textContent = formatCurrency(netProfit);
+
+    np.classList.remove("positive", "negative");
+    if (netProfit > 0) np.classList.add("positive");
+    if (netProfit < 0) np.classList.add("negative");
+}
+
+/* ------------------------------
+   CSV PARSER
+--------------------------------*/
+function parseCsv(text) {
+    const rows = text.split(/\r?\n/).filter(r => r.trim().length > 0);
+    rows.slice(1).forEach(r => {
+        const c = r.split(",");
+        if (c.length < 7) return;
+
+        sales.push({
+            date: c[0],
+            platform: c[1],
+            item: c[2],
+            cost: parseFloat(c[3]) || 0,
+            shipping: parseFloat(c[4]) || 0,
+            fees: parseFloat(c[5]) || 0,
+            salePrice: parseFloat(c[6]) || 0
+        });
+    });
+
+    renderTable();
+    updateTotals();
+}
+
+/* ------------------------------
+   EVENT LISTENERS
+--------------------------------*/
+document.getElementById("uploadCsvBtn").onclick = () => {
+    const file = document.getElementById("csvFileInput").files[0];
+    if (!file) return alert("Choose a CSV file first.");
+
+    const reader = new FileReader();
+    reader.onload = e => parseCsv(e.target.result);
+    reader.readAsText(file);
+};
+
+document.getElementById("addSampleBtn").onclick = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+
+    sales.push({
+        date: `${y}-${m}-${d}`,
+        platform: "eBay",
+        item: "Sample Item",
+        cost: 10,
+        shipping: 4.5,
+        fees: 2,
+        salePrice: 29.99
+    });
+
+    renderTable();
+    updateTotals();
+};
+
+document.getElementById("clearAllBtn").onclick = () => {
+    if (!confirm("Clear all data?")) return;
+    sales.length = 0;
+    renderTable();
+    updateTotals();
+};
+
+document.getElementById("monthInput").onchange = () => {
+    renderTable();
+    updateTotals();
+};
+
+/* ------------------------------
+   INITIAL SETUP
+--------------------------------*/
+(function init() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    document.getElementById("monthInput").value = `${y}-${m}`;
+    renderTable();
+    updateTotals();
+})();
+</script>
+
+</body>
+</html>
