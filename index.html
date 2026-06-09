@@ -13,79 +13,38 @@
   </header>
 
   <main class="app-main">
-    <!-- CSV upload -->
     <section class="card">
       <h2>Import eBay Sales CSV</h2>
-      <p>
-        Choose your eBay Sales Report CSV file and click
-        <strong>Load CSV</strong>. Data will be saved to this device.
-      </p>
+      <p>Choose your eBay Sales Report CSV file and click <strong>Load CSV</strong>.</p>
       <div class="upload-row">
         <input type="file" id="csvFileInput" accept=".csv" />
         <button id="loadCsvBtn">Load CSV</button>
       </div>
-      <p class="hint">
-        Expected columns (header names can vary, app will auto-detect):
-        <code>Item Title</code>, <code>Sale</code>, <code>Shipping</code>,
-        <code>Fees</code>, <code>COGS</code>.
-      </p>
+      <p class="hint">Expected columns: Item Title, Sale, Shipping, Fees, COGS.</p>
       <p id="uploadStatus" class="status"></p>
     </section>
 
-    <!-- Summary metrics -->
     <section class="summary-grid">
-      <div class="summary-card">
-        <h3>Total Revenue</h3>
-        <p id="totalRevenue">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h3>Total COGS</h3>
-        <p id="totalCogs">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h3>Total Profit</h3>
-        <p id="totalProfit">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h3>Sell-Through Rate</h3>
-        <p id="sellThrough">0.0%</p>
-      </div>
-      <div class="summary-card">
-        <h3>Average Sale Price</h3>
-        <p id="avgSalePrice">$0.00</p>
-      </div>
+      <div class="summary-card"><h3>Total Revenue</h3><p id="totalRevenue">$0.00</p></div>
+      <div class="summary-card"><h3>Total COGS</h3><p id="totalCogs">$0.00</p></div>
+      <div class="summary-card"><h3>Total Profit</h3><p id="totalProfit">$0.00</p></div>
+      <div class="summary-card"><h3>Sell-Through Rate</h3><p id="sellThrough">0.0%</p></div>
+      <div class="summary-card"><h3>Average Sale Price</h3><p id="avgSalePrice">$0.00</p></div>
     </section>
 
-    <!-- Manual add sale -->
     <section class="card">
       <h2>Add Sale Manually</h2>
       <div class="form-grid">
-        <label>
-          Title
-          <input type="text" id="manualTitle" placeholder="Item title" />
-        </label>
-        <label>
-          Sale
-          <input type="number" id="manualSale" step="0.01" />
-        </label>
-        <label>
-          Shipping
-          <input type="number" id="manualShipping" step="0.01" />
-        </label>
-        <label>
-          Fees
-          <input type="number" id="manualFees" step="0.01" />
-        </label>
-        <label>
-          COGS
-          <input type="number" id="manualCogs" step="0.01" />
-        </label>
+        <label>Title<input type="text" id="manualTitle" /></label>
+        <label>Sale<input type="number" id="manualSale" step="0.01" /></label>
+        <label>Shipping<input type="number" id="manualShipping" step="0.01" /></label>
+        <label>Fees<input type="number" id="manualFees" step="0.01" /></label>
+        <label>COGS<input type="number" id="manualCogs" step="0.01" /></label>
       </div>
       <button id="addSaleBtn">Add Sale</button>
       <p id="manualStatus" class="status"></p>
     </section>
 
-    <!-- Sales table -->
     <section class="card">
       <h2>Sales</h2>
       <div class="table-wrapper">
@@ -100,9 +59,7 @@
               <th>Profit</th>
             </tr>
           </thead>
-          <tbody id="salesTableBody">
-            <!-- rows injected by JS -->
-          </tbody>
+          <tbody id="salesTableBody"></tbody>
         </table>
       </div>
       <div class="table-actions">
@@ -113,7 +70,7 @@
   </main>
 
   <footer class="app-footer">
-    <p>Data is stored locally in your browser (localStorage).</p>
+    <p>Data is stored locally in your browser.</p>
   </footer>
 
   <script src="app.js"></script>
