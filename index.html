@@ -2,159 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Reseller Finance Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reseller Finance Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <header class="app-header">
+  <header>
     <h1>Reseller Finance Dashboard</h1>
-    <p>Gunmetal Edition · Salary · COGS · Purchases · Bills · 75/25 Allocation</p>
   </header>
 
-  <main class="app-main">
-    <!-- Top controls -->
-    <section class="controls-card">
-      <div class="control-group">
-        <label for="month-select">Month:</label>
-        <input type="month" id="month-select" />
-      </div>
+  <!-- ================= CSV IMPORT ================= -->
+  <section class="card">
+    <h2>CSV Import</h2>
+    <input type="file" id="csvUpload" accept=".csv" />
+    <p>Upload your eBay Sales Report CSV to auto‑import sales.</p>
+  </section>
 
-      <div class="control-group">
-        <label for="salary-goal">Monthly Salary Goal ($):</label>
-        <input type="number" id="salary-goal" min="0" step="50" />
-        <button id="save-salary-goal">Save Salary Goal</button>
-      </div>
+  <!-- ================= SALES INPUT ================= -->
+  <section class="card">
+    <h2>Sales Input</h2>
 
-      <div class="control-group">
-        <label for="fixed-costs">Monthly Fixed Costs (Storage, Subs, etc.) ($):</label>
-        <input type="number" id="fixed-costs" min="0" step="10" />
-        <button id="save-fixed-costs">Save Fixed Costs</button>
-      </div>
-    </section>
+    <div class="form-row">
+      <input id="saleDate" type="date" />
+      <input id="salePlatform" type="text" placeholder="Platform" />
+      <input id="saleTitle" type="text" placeholder="Item Title" />
+      <input id="saleAmount" type="number" step="0.01" placeholder="Sale Amount" />
+      <input id="saleShipping" type="number" step="0.01" placeholder="Shipping" />
+      <input id="saleFees" type="number" step="0.01" placeholder="Fees" />
+      <input id="saleCOGS" type="number" step="0.01" placeholder="COGS" />
+      <button id="addSaleBtn">Add Sale</button>
+    </div>
 
-    <!-- Summary cards -->
-    <section class="summary-grid">
-      <div class="summary-card">
-        <h2>Total Sales</h2>
-        <p id="total-sales" class="summary-value">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h2>Total COGS</h2>
-        <p id="total-cogs" class="summary-value">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h2>Total Purchases (Inventory)</h2>
-        <p id="total-purchases" class="summary-value">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h2>Fixed Monthly Costs</h2>
-        <p id="total-fixed" class="summary-value">$0.00</p>
-      </div>
-      <div class="summary-card">
-        <h2>Net Profit (Before Salary)</h2>
-        <p id="net-profit" class="summary-value">$0.00</p>
-      </div>
-      <div class="summary-card salary-card">
-        <h2>Salary Goal Progress</h2>
-        <p id="salary-goal-display" class="summary-value">$4,400.00</p>
-        <p id="salary-earned" class="summary-subvalue">Earned: $0.00</p>
-        <div class="progress-bar">
-          <div id="salary-progress" class="progress-fill"></div>
-        </div>
-      </div>
-    </section>
+    <button id="clearSalesBtn" class="danger">Clear All Sales</button>
+  </section>
 
-    <!-- Allocation card -->
-    <section class="allocation-card">
-      <h2>End-of-Month Allocation (After Salary, COGS, Purchases, Bills)</h2>
-      <p id="final-profit" class="allocation-profit">$0.00</p>
-      <div class="allocation-row">
-        <div class="allocation-box">
-          <h3>75% Back to Sourcing</h3>
-          <p id="sourcing-allocation" class="allocation-value">$0.00</p>
-        </div>
-        <div class="allocation-box">
-          <h3>25% to Business Savings</h3>
-          <p id="savings-allocation" class="allocation-value">$0.00</p>
-        </div>
-      </div>
-    </section>
+  <!-- ================= SALES TABLE ================= -->
+  <section class="card">
+    <h2>Sales</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Platform</th>
+          <th>Title</th>
+          <th>Sale</th>
+          <th>Shipping</th>
+          <th>Fees</th>
+          <th>COGS</th>
+          <th>Profit</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="salesTableBody"></tbody>
+    </table>
+  </section>
 
-    <!-- CSV upload + manual sales -->
-    <section class="data-section">
-      <div class="data-card">
-        <h2>Sales Input</h2>
-        <div class="upload-row">
-          <input type="file" id="sales-csv" accept=".csv" />
-          <button id="clear-sales">Clear Sales</button>
-        </div>
+  <!-- ================= PURCHASE INPUT ================= -->
+  <section class="card">
+    <h2>Purchases</h2>
 
-        <h3>Manual Sale Entry</h3>
-        <div class="manual-row">
-          <input type="date" id="manual-sale-date" />
-          <input type="text" id="manual-sale-source" placeholder="Platform / Source" />
-          <input type="number" id="manual-sale-amount" placeholder="Sale Amount $" step="0.01" />
-          <input type="number" id="manual-sale-cogs" placeholder="COGS $" step="0.01" />
-          <button id="add-manual-sale">Add Sale</button>
-        </div>
+    <div class="form-row">
+      <input id="purchaseDate" type="date" />
+      <input id="purchaseSource" type="text" placeholder="Source" />
+      <input id="purchaseDescription" type="text" placeholder="Description" />
+      <input id="purchaseAmount" type="number" step="0.01" placeholder="Amount" />
+      <button id="addPurchaseBtn">Add Purchase</button>
+    </div>
+  </section>
 
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Source</th>
-              <th>Sale ($)</th>
-              <th>COGS ($)</th>
-            </tr>
-          </thead>
-          <tbody id="sales-table-body">
-            <tr><td colspan="4" class="empty-row">No sales for this month.</td></tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- ================= PURCHASE TABLE ================= -->
+  <section class="card">
+    <h2>Purchase History</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Source</th>
+          <th>Description</th>
+          <th>Amount</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="purchasesTableBody"></tbody>
+    </table>
+  </section>
 
-      <!-- Purchases -->
-      <div class="data-card">
-        <h2>Inventory Purchases</h2>
-        <div class="manual-row">
-          <input type="date" id="purchase-date" />
-          <input type="text" id="purchase-note" placeholder="Source / Notes" />
-          <input type="number" id="purchase-amount" placeholder="Amount $" step="0.01" />
-          <button id="add-purchase">Add Purchase</button>
-        </div>
-
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Notes</th>
-              <th>Amount ($)</th>
-            </tr>
-          </thead>
-          <tbody id="purchases-table-body">
-            <tr><td colspan="3" class="empty-row">No purchases for this month.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- End-of-month summary -->
-    <section class="summary-card full-width">
-      <h2>End-of-Month Breakdown</h2>
-      <ul class="breakdown-list">
-        <li><span>Total Sales:</span> <span id="breakdown-sales">$0.00</span></li>
-        <li><span>Total COGS:</span> <span id="breakdown-cogs">$0.00</span></li>
-        <li><spanTotal Purchases:</span> <span id="breakdown-purchases">$0.00</span></li>
-        <li><span>Fixed Monthly Costs:</span> <span id="breakdown-fixed">$0.00</span></li>
-        <li><span>Salary Goal:</span> <span id="breakdown-salary-goal">$4,400.00</span></li>
-        <li><span>Salary Earned:</span> <span id="breakdown-salary-earned">$0.00</span></li>
-        <li><span>Profit After All:</span> <span id="breakdown-final-profit">$0.00</span></li>
-        <li><span>75% Sourcing:</span> <span id="breakdown-sourcing">$0.00</span></li>
-        <li><span>25% Savings:</span> <span id="breakdown-savings">$0.00</span></li>
-      </ul>
-    </section>
-  </main>
+  <!-- ================= METRICS ================= -->
+  <section class="card">
+    <h2>Metrics</h2>
+    <div class="metrics-grid">
+      <div>Total Revenue: <span id="totalRevenue">$0.00</span></div>
+      <div>Total COGS: <span id="totalCOGS">$0.00</span></div>
+      <div>Total Profit: <span id="totalProfit">$0.00</span></div>
+      <div>Sell‑Through Rate: <span id="sellThroughRate">0%</span></div>
+      <div>Avg Sale Price: <span id="avgSalePrice">$0.00</span></div>
+      <div>Avg COGS: <span id="avgCOGS">$0.00</span></div>
+    </div>
+  </section>
 
   <script src="app.js"></script>
 </body>
