@@ -41,40 +41,67 @@ function formatCurrency(value) {
 // ---------- CSV Parsing ----------
 
 function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
+  // Proper CSV parser that handles quoted fields and commas inside quotes
+  const rows = [];
+  let current = "";
+  let insideQuotes = false;
+  let row = [];
 
-  const header = lines[0].split(",");
-  const mapIndex = (names) => {
-    const lowerHeader = header.map((h) => h.trim().toLowerCase());
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && insideQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      row.push(current.trim());
+      current = "";
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (current.length > 0 || row.length > 0) {
+        row.push(current.trim());
+        rows.push(row);
+      }
+      current = "";
+      row = [];
+    } else {
+      current += char;
+    }
+  }
+
+  if (current.length > 0 || row.length > 0) {
+    row.push(current.trim());
+    rows.push(row);
+  }
+
+  const header = rows[0].map(h => h.toLowerCase());
+
+  const find = names => {
     for (const name of names) {
-      const idx = lowerHeader.indexOf(name.toLowerCase());
+      const idx = header.indexOf(name.toLowerCase());
       if (idx !== -1) return idx;
     }
     return -1;
   };
 
-  const idxTitle = mapIndex(["item title", "title", "name"]);
-  const idxSale = mapIndex(["sale", "sale price", "total sale", "sold price"]);
-  const idxShipping = mapIndex(["shipping", "postage", "shipping and handling"]);
-  const idxFees = mapIndex(["fees", "ebay fees", "total fees"]);
-  const idxCogs = mapIndex(["cogs", "cost", "cost of goods", "purchase cost"]);
+  const idxTitle = find(["item title", "title"]);
+  const idxSale = find(["sale", "sale price", "total sale"]);
+  const idxShipping = find(["shipping", "shipping and handling"]);
+  const idxFees = find(["fees", "ebay fees", "total fees"]);
+  const idxCogs = find(["cogs", "cost", "cost of goods"]);
 
   const parsed = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",");
-    if (cols.length === 0) continue;
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
 
-    const title =
-      idxTitle !== -1 ? cols[idxTitle].trim() : `Item ${i.toString()}`;
+    const title = idxTitle !== -1 ? cols[idxTitle] : `Item ${i}`;
     const sale = idxSale !== -1 ? Number(cols[idxSale]) || 0 : 0;
-    const shipping =
-      idxShipping !== -1 ? Number(cols[idxShipping]) || 0 : 0;
+    const shipping = idxShipping !== -1 ? Number(cols[idxShipping]) || 0 : 0;
     const fees = idxFees !== -1 ? Number(cols[idxFees]) || 0 : 0;
     const cogs = idxCogs !== -1 ? Number(cols[idxCogs]) || 0 : 0;
-
-    const profit = sale + shipping - fees - cogs;
 
     parsed.push({
       title,
@@ -82,12 +109,13 @@ function parseCsv(text) {
       shipping,
       fees,
       cogs,
-      profit,
+      profit: sale + shipping - fees - cogs
     });
   }
 
   return parsed;
 }
+
 
 // ---------- Rendering ----------
 
