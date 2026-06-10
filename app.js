@@ -19,13 +19,21 @@ const monthsCol = collection(db, "users", uid, "months");
 const settingsDoc = doc(db, "users", uid, "settings", "salaryGoal");
 
 // ------------------------------
-// MONTH CLOSE LOGIC
+// HELPERS
+// ------------------------------
+function toNum(v) {
+  return Number(String(v || "0").replace(/[^0-9.-]/g, ""));
+}
+
+// ------------------------------
+// MONTH LOGIC
 // ------------------------------
 async function getCurrentMonthDoc() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const id = `${year}-${month}`;
+
   document.getElementById("currentMonthName").textContent = id;
   return doc(monthsCol, id);
 }
@@ -39,7 +47,6 @@ async function ensureMonthExists() {
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
 
-    // Grace period = end of next month’s 1st day
     const grace = new Date(year, month, 1, 23, 59, 59);
 
     await setDoc(monthDoc, {
@@ -63,7 +70,6 @@ async function isMonthLocked() {
   const now = new Date();
   const grace = new Date(data.gracePeriodEnds);
 
-  // If grace period passed → lock it
   if (now > grace && !data.isLocked) {
     await updateDoc(monthDoc, { isLocked: true });
     return true;
@@ -77,10 +83,8 @@ async function closeMonthManually() {
   const snap = await getDoc(monthDoc);
   if (!snap.exists()) return;
 
-  // Force lock
   await updateDoc(monthDoc, { isLocked: true });
 
-  // Create next month
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const nextId = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
@@ -129,21 +133,16 @@ function parseCSV(text) {
   return rows;
 }
 
-function toNum(v) {
-  return Number(String(v || "0").replace(/[^0-9.-]/g, ""));
-}
-
 // ------------------------------
-// CSV UPLOAD HANDLER
+// CSV UPLOAD
 // ------------------------------
 document.getElementById("loadCsvBtn").addEventListener("click", async () => {
   if (await isMonthLocked()) {
-    alert("This month is locked. New entries go to the next month.");
+    alert("This month is locked.");
     return;
   }
 
-  const fileInput = document.getElementById("csvFileInput");
-  const file = fileInput.files[0];
+  const file = document.getElementById("csvFileInput").files[0];
   if (!file) {
     document.getElementById("uploadStatus").textContent = "No file selected.";
     return;
@@ -151,7 +150,7 @@ document.getElementById("loadCsvBtn").addEventListener("click", async () => {
 
   const text = await file.text();
   const rows = parseCSV(text);
-  rows.shift(); // remove header
+  rows.shift();
 
   for (let r of rows) {
     const [title, qty, totalSales, totalCosts, cogs] = r;
@@ -205,11 +204,11 @@ onSnapshot(monthsCol, (snapshot) => {
 });
 
 // ------------------------------
-// MANUAL SALE ENTRY
+// MANUAL SALE
 // ------------------------------
 document.getElementById("addSaleBtn").addEventListener("click", async () => {
   if (await isMonthLocked()) {
-    alert("This month is locked. New entries go to the next month.");
+    alert("This month is locked.");
     return;
   }
 
@@ -235,7 +234,7 @@ document.getElementById("addSaleBtn").addEventListener("click", async () => {
 // ------------------------------
 document.getElementById("addPurchaseBtn").addEventListener("click", async () => {
   if (await isMonthLocked()) {
-    alert("This month is locked. New entries go to the next month.");
+    alert("This month is locked.");
     return;
   }
 
@@ -327,7 +326,7 @@ function renderMonthArchive(months) {
 }
 
 // ------------------------------
-// SUMMARY CALCULATIONS
+// SUMMARY
 // ------------------------------
 function updateSummary(sales) {
   const revenue = sales.reduce((a, s) => a + (s.totalSales || 0), 0);
@@ -355,10 +354,9 @@ function updateInventorySpent(purchases) {
 document.getElementById("clearDataBtn").addEventListener("click", async () => {
   const snap = await getDocs(salesCol);
   const deletions = [];
-  snap.forEach(d => {
-    deletions.push(deleteDoc(doc(salesCol, d.id)));
-  });
+  snap.forEach(d => deletions.push(deleteDoc(doc(salesCol, d.id))));
   await Promise.all(deletions);
+
   document.getElementById("clearStatus").textContent = "All sales data cleared.";
 });
 
