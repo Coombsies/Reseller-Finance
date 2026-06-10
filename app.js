@@ -1,15 +1,20 @@
 // ------------------------------------------------------------
-// Reseller Finance Dashboard (Header-based, COGS editable)
+// Reseller Finance Dashboard with Monthly System
 // ------------------------------------------------------------
 
-const STORAGE_KEY = "reseller_finance_sales_v5";
+const SALES_STORAGE_KEY = "reseller_finance_sales_v5";
+const MONTH_STORAGE_KEY = "reseller_finance_month_v1";
+const MONTH_ARCHIVE_KEY = "reseller_finance_month_archive_v1";
+
 let sales = [];
+let currentMonth = null;
+let monthArchive = [];
 
 // ---------------- Helpers ----------------
 
 function loadSalesFromStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(SALES_STORAGE_KEY);
     sales = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(sales)) sales = [];
   } catch {
@@ -18,7 +23,48 @@ function loadSalesFromStorage() {
 }
 
 function saveSalesToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sales));
+  localStorage.setItem(SALES_STORAGE_KEY, JSON.stringify(sales));
+}
+
+function loadMonthFromStorage() {
+  try {
+    const raw = localStorage.getItem(MONTH_STORAGE_KEY);
+    currentMonth = raw ? JSON.parse(raw) : null;
+  } catch {
+    currentMonth = null;
+  }
+
+  if (!currentMonth) {
+    const now = new Date();
+    currentMonth = {
+      id: `${now.getFullYear()}-${now.getMonth() + 1}`,
+      name: now.toLocaleString("default", { month: "long", year: "numeric" }),
+      salaryGoal: 4400,
+      salaryPaid: 0,
+      inventoryBudget: 0,
+      inventorySpent: 0,
+      businessSavings: 0,
+      remainingProfit: 0,
+      purchases: []
+    };
+    saveMonthToStorage();
+  }
+
+  try {
+    const rawArchive = localStorage.getItem(MONTH_ARCHIVE_KEY);
+    monthArchive = rawArchive ? JSON.parse(rawArchive) : [];
+    if (!Array.isArray(monthArchive)) monthArchive = [];
+  } catch {
+    monthArchive = [];
+  }
+}
+
+function saveMonthToStorage() {
+  localStorage.setItem(MONTH_STORAGE_KEY, JSON.stringify(currentMonth));
+}
+
+function saveMonthArchive() {
+  localStorage.setItem(MONTH_ARCHIVE_KEY, JSON.stringify(monthArchive));
 }
 
 function formatCurrency(value) {
@@ -57,7 +103,7 @@ function parseCsv(text) {
   const parsed = [];
 
   for (const cols of rows) {
-    if (!cols.length || !cols[idxTitle]) continue;
+    if (!cols.length || idxTitle === -1 || !cols[idxTitle]) continue;
 
     const title = cols[idxTitle];
     const qty = idxQty !== -1 ? Number(cols[idxQty]) || 0 : 0;
@@ -82,13 +128,13 @@ function parseCsv(text) {
   return parsed;
 }
 
-// ---------------- Rendering ----------------
+// ---------------- Sales Rendering ----------------
 
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
   tbody.innerHTML = "";
 
-  sales.forEach((item, index) => {
+  sales.forEach((item) => {
     const tr = document.createElement("tr");
 
     const tdTitle = document.createElement("td");
@@ -118,6 +164,7 @@ function renderSalesTable() {
       saveSalesToStorage();
       tdProfit.textContent = formatCurrency(item.profit);
       renderSummary();
+      renderMonthSummary();
     });
 
     tdCogs.appendChild(cogsInput);
@@ -153,9 +200,96 @@ function renderSummary() {
   document.getElementById("avgSalePrice").textContent = formatCurrency(avgSalePrice);
 }
 
-function renderAll() {
-  renderSalesTable();
-  renderSummary();
+// ---------------- Monthly System ----------------
+
+function computeMonthProfit() {
+  let profit = 0;
+  sales.forEach(item => {
+    profit += item.profit || 0;
+  });
+  return profit;
+}
+
+function renderMonthSummary() {
+  document.getElementById("currentMonthName").textContent = currentMonth.name;
+  document.getElementById("salaryGoalInput").value = currentMonth.salaryGoal;
+
+  const monthProfit = computeMonthProfit();
+  currentMonth.remainingProfit = monthProfit - currentMonth.salaryPaid;
+
+  const remainingAfterSalary = Math.max(currentMonth.remainingProfit, 0);
+  const inventoryBudget = remainingAfterSalary * 0.75;
+  const businessSavings = remainingAfterSalary * 0.25;
+
+  currentMonth.inventoryBudget = inventoryBudget;
+  currentMonth.businessSavings = businessSavings;
+
+  const inventoryRemaining = inventoryBudget - currentMonth.inventorySpent;
+
+  document.getElementById("monthProfit").textContent = formatCurrency(monthProfit);
+  document.getElementById("salaryPaid").textContent = formatCurrency(currentMonth.salaryPaid);
+  document.getElementById("remainingProfit").textContent = formatCurrency(remainingAfterSalary);
+  document.getElementById("inventoryBudget").textContent = formatCurrency(inventoryBudget);
+  document.getElementById("inventorySpent").textContent = formatCurrency(currentMonth.inventorySpent);
+  document.getElementById("inventoryRemaining").textContent = formatCurrency(inventoryRemaining);
+  document.getElementById("businessSavings").textContent = formatCurrency(businessSavings);
+
+  renderPurchaseTable();
+  saveMonthToStorage();
+}
+
+function renderPurchaseTable() {
+  const tbody = document.getElementById("purchaseTableBody");
+  tbody.innerHTML = "";
+
+  currentMonth.purchases.forEach(p => {
+    const tr = document.createElement("tr");
+    const tdDesc = document.createElement("td");
+    const tdAmount = document.createElement("td");
+
+    tdDesc.textContent = p.desc;
+    tdAmount.textContent = formatCurrency(p.amount);
+
+    tr.appendChild(tdDesc);
+    tr.appendChild(tdAmount);
+    tbody.appendChild(tr);
+  });
+}
+
+function renderMonthArchive() {
+  const tbody = document.getElementById("monthArchiveBody");
+  tbody.innerHTML = "";
+
+  monthArchive.forEach(m => {
+    const tr = document.createElement("tr");
+
+    const tdName = document.createElement("td");
+    tdName.textContent = m.name;
+
+    const tdProfit = document.createElement("td");
+    tdProfit.textContent = formatCurrency(m.monthProfit);
+
+    const tdSalary = document.createElement("td");
+    tdSalary.textContent = formatCurrency(m.salaryPaid);
+
+    const tdInvBudget = document.createElement("td");
+    tdInvBudget.textContent = formatCurrency(m.inventoryBudget);
+
+    const tdInvSpent = document.createElement("td");
+    tdInvSpent.textContent = formatCurrency(m.inventorySpent);
+
+    const tdSavings = document.createElement("td");
+    tdSavings.textContent = formatCurrency(m.businessSavings);
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdProfit);
+    tr.appendChild(tdSalary);
+    tr.appendChild(tdInvBudget);
+    tr.appendChild(tdInvSpent);
+    tr.appendChild(tdSavings);
+
+    tbody.appendChild(tr);
+  });
 }
 
 // ---------------- Event Handlers ----------------
@@ -180,7 +314,9 @@ function handleLoadCsv() {
 
     sales = sales.concat(parsed);
     saveSalesToStorage();
-    renderAll();
+    renderSalesTable();
+    renderSummary();
+    renderMonthSummary();
 
     status.textContent = `Loaded ${parsed.length} rows.`;
   };
@@ -199,28 +335,110 @@ function handleAddSale() {
 
   sales.push(item);
   saveSalesToStorage();
-  renderAll();
+  renderSalesTable();
+  renderSummary();
+  renderMonthSummary();
 
   document.getElementById("manualStatus").textContent = "Manual sale added.";
 }
 
 function handleClearData() {
-  if (!confirm("Clear all saved sales data?")) return;
+  if (!confirm("Clear all sales data?")) return;
 
   sales = [];
   saveSalesToStorage();
-  renderAll();
+  renderSalesTable();
+  renderSummary();
+  renderMonthSummary();
 
-  document.getElementById("clearStatus").textContent = "All data cleared.";
+  document.getElementById("clearStatus").textContent = "All sales data cleared.";
+}
+
+function handleUpdateSalaryGoal() {
+  const val = Number(document.getElementById("salaryGoalInput").value) || 0;
+  currentMonth.salaryGoal = val;
+  saveMonthToStorage();
+  renderMonthSummary();
+}
+
+function handleAddPurchase() {
+  const desc = document.getElementById("purchaseDesc").value.trim() || "Purchase";
+  const amount = Number(document.getElementById("purchaseAmount").value) || 0;
+
+  if (amount <= 0) {
+    document.getElementById("purchaseStatus").textContent = "Enter a valid purchase amount.";
+    return;
+  }
+
+  currentMonth.purchases.push({ desc, amount });
+  currentMonth.inventorySpent += amount;
+  saveMonthToStorage();
+  renderMonthSummary();
+
+  document.getElementById("purchaseStatus").textContent = "Purchase added.";
+  document.getElementById("purchaseDesc").value = "";
+  document.getElementById("purchaseAmount").value = "";
+}
+
+function handleCloseMonth() {
+  const monthProfit = computeMonthProfit();
+  const remainingAfterSalary = Math.max(monthProfit - currentMonth.salaryPaid, 0);
+  const inventoryBudget = remainingAfterSalary * 0.75;
+  const businessSavings = remainingAfterSalary * 0.25;
+
+  const archiveEntry = {
+    id: currentMonth.id,
+    name: currentMonth.name,
+    monthProfit,
+    salaryPaid: currentMonth.salaryPaid,
+    inventoryBudget,
+    inventorySpent: currentMonth.inventorySpent,
+    businessSavings
+  };
+
+  monthArchive.push(archiveEntry);
+  saveMonthArchive();
+
+  const now = new Date();
+  currentMonth = {
+    id: `${now.getFullYear()}-${now.getMonth() + 1}`,
+    name: now.toLocaleString("default", { month: "long", year: "numeric" }),
+    salaryGoal: archiveEntry.salaryPaid > 0 ? archiveEntry.salaryPaid : 4400,
+    salaryPaid: 0,
+    inventoryBudget: 0,
+    inventorySpent: 0,
+    businessSavings: 0,
+    remainingProfit: 0,
+    purchases: []
+  };
+  saveMonthToStorage();
+
+  sales = [];
+  saveSalesToStorage();
+
+  renderSalesTable();
+  renderSummary();
+  renderMonthSummary();
+  renderMonthArchive();
+
+  document.getElementById("monthStatus").textContent = "Month closed and new month started.";
 }
 
 // ---------------- Init ----------------
 
 document.addEventListener("DOMContentLoaded", () => {
   loadSalesFromStorage();
-  renderAll();
+  loadMonthFromStorage();
+
+  renderSalesTable();
+  renderSummary();
+  renderMonthSummary();
+  renderMonthArchive();
 
   document.getElementById("loadCsvBtn").addEventListener("click", handleLoadCsv);
   document.getElementById("addSaleBtn").addEventListener("click", handleAddSale);
   document.getElementById("clearDataBtn").addEventListener("click", handleClearData);
+  document.getElementById("updateSalaryGoalBtn").addEventListener("click", handleUpdateSalaryGoal);
+  document.getElementById("addPurchaseBtn").addEventListener("click", handleAddPurchase);
+  document.getElementById("closeMonthBtn").addEventListener("click", handleCloseMonth);
 });
