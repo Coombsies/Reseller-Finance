@@ -2,7 +2,7 @@
 // Reseller Finance Dashboard (Header-based, COGS editable)
 // ------------------------------------------------------------
 
-const STORAGE_KEY = "reseller_finance_sales_v4";
+const STORAGE_KEY = "reseller_finance_sales_v5";
 let sales = [];
 
 // ---------------- Helpers ----------------
@@ -30,10 +30,14 @@ function cleanNumber(str) {
   return parseFloat(str.replace(/[^0-9.-]+/g, "")) || 0;
 }
 
+function recalcProfit(item) {
+  item.profit =
+    (item.totalSales || 0) -
+    (item.sellingCosts || 0) -
+    (item.cogs || 0);
+}
+
 // ---------------- CSV Parsing ----------------
-// Matches Excel headers exactly:
-// "Listing title", "Quantity sold",
-// "Total sales (Includes taxes)", "Total selling costs", "Cogs"
 
 function parseCsv(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
@@ -42,7 +46,7 @@ function parseCsv(text) {
   const rows = lines.map(line => line.split(",").map(col => col.trim()));
 
   const header = rows[0].map(h => h.toLowerCase());
-  rows.shift(); // remove header
+  rows.shift();
 
   const idxTitle = header.indexOf("listing title");
   const idxQty = header.indexOf("quantity sold");
@@ -53,48 +57,32 @@ function parseCsv(text) {
   const parsed = [];
 
   for (const cols of rows) {
-    if (!cols.length) continue;
-    if (idxTitle === -1 || !cols[idxTitle]) continue;
+    if (!cols.length || !cols[idxTitle]) continue;
 
-    const title = cols[idxTitle] || "Untitled";
+    const title = cols[idxTitle];
     const qty = idxQty !== -1 ? Number(cols[idxQty]) || 0 : 0;
 
     const totalSales =
-      idxTotalSales !== -1
-        ? cleanNumber(cols[idxTotalSales])
-        : 0;
+      idxTotalSales !== -1 ? cleanNumber(cols[idxTotalSales]) : 0;
 
     const sellingCosts =
-      idxSellingCosts !== -1
-        ? cleanNumber(cols[idxSellingCosts])
-        : 0;
+      idxSellingCosts !== -1 ? cleanNumber(cols[idxSellingCosts]) : 0;
 
-    // COGS from file if present, otherwise 0
-    let cogs =
+    const cogs =
       idxCogs !== -1 && cols[idxCogs]
         ? cleanNumber(cols[idxCogs])
         : 0;
 
-    const profit = totalSales - sellingCosts - cogs;
+    const item = { title, qty, totalSales, sellingCosts, cogs, profit: 0 };
+    recalcProfit(item);
 
-    parsed.push({
-      title,
-      qty,
-      totalSales,
-      sellingCosts,
-      cogs,
-      profit
-    });
+    parsed.push(item);
   }
 
   return parsed;
 }
 
 // ---------------- Rendering ----------------
-
-function recalcProfit(item) {
-  item.profit = (item.totalSales || 0) - (item.sellingCosts || 0) - (item.cogs || 0);
-}
 
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -115,22 +103,24 @@ function renderSalesTable() {
     const tdSellingCosts = document.createElement("td");
     tdSellingCosts.textContent = formatCurrency(item.sellingCosts);
 
+    const tdProfit = document.createElement("td");
+    tdProfit.textContent = formatCurrency(item.profit);
+
     const tdCogs = document.createElement("td");
     const cogsInput = document.createElement("input");
     cogsInput.type = "number";
     cogsInput.step = "0.01";
     cogsInput.value = item.cogs || 0;
+
     cogsInput.addEventListener("change", () => {
       item.cogs = Number(cogsInput.value) || 0;
       recalcProfit(item);
       saveSalesToStorage();
-      renderSummary(); // table row already updated
       tdProfit.textContent = formatCurrency(item.profit);
+      renderSummary();
     });
-    tdCogs.appendChild(cogsInput);
 
-    const tdProfit = document.createElement("td");
-    tdProfit.textContent = formatCurrency(item.profit);
+    tdCogs.appendChild(cogsInput);
 
     tr.appendChild(tdTitle);
     tr.appendChild(tdQty);
@@ -188,12 +178,6 @@ function handleLoadCsv() {
       return;
     }
 
-    // COGS default to 0 if blank in file
-    parsed.forEach(item => {
-      if (item.cogs == null) item.cogs = 0;
-      recalcProfit(item);
-    });
-
     sales = sales.concat(parsed);
     saveSalesToStorage();
     renderAll();
@@ -210,14 +194,7 @@ function handleAddSale() {
   const sellingCosts = Number(document.getElementById("manualCosts").value) || 0;
   const cogs = Number(document.getElementById("manualCogs").value) || 0;
 
-  const item = {
-    title,
-    qty: 1,
-    totalSales,
-    sellingCosts,
-    cogs,
-    profit: 0
-  };
+  const item = { title, qty: 1, totalSales, sellingCosts, cogs, profit: 0 };
   recalcProfit(item);
 
   sales.push(item);
