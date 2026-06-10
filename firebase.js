@@ -1,15 +1,35 @@
-// firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { db } from "./firebase.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBdJ10lS_BMEJt25laptFCCSIlkzOCxqI",
-  authDomain: "resellerfinanceapp.firebaseapp.com",
-  projectId: "resellerfinanceapp",
-  storageBucket: "resellerfinanceapp.firebasestorage.app",
-  messagingSenderId: "625217355771",
-  appId: "1:625217355771:web:3c50262a6189462c1555e"
-};
+document.getElementById("csvFile").addEventListener("change", handleCSV);
+document.getElementById("clearBtn").addEventListener("click", clearResults);
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+function handleCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = e.target.result;
+    processCSV(text);
+  };
+  reader.readAsText(file);
+}
+
+function processCSV(csv) {
+  const rows = csv.split("\n").map(r => r.split(","));
+  let total = 0;
+
+  rows.forEach(row => {
+    const value = parseFloat(row[1]);
+    if (!isNaN(value)) total += value;
+  });
+
+  document.getElementById("results").innerHTML = `
+    <p><strong>Total:</strong> $${total.toFixed(2)}</p>
+  `;
+}
+
+function clearResults() {
+  document.getElementById("results").innerHTML = "";
+  document.getElementById("csvFile").value = "";
+}
