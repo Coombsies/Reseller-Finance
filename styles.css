@@ -200,3 +200,51 @@ td {
     padding: 0.4rem;
   }
 }
+/* Upload Row Layout */
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* Custom File Picker */
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hide the native file input */
+.file-picker input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* Load CSV Button */
+.csv-btn {
+  padding: 8px 16px;
+  background: #0078ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 10;
+}
+
+.csv-btn:hover {
+  background: #005fcc;
+}
