@@ -1,15 +1,8 @@
-// firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-
 const firebaseConfig = {
-  apiKey: "AIzaSyCIyQ_hpczW5NefuV_XgfJgKM9M3e4t7x8",
-  authDomain: "monthly-reseller-finance-app.firebaseapp.com",
-  projectId: "monthly-reseller-finance-app",
-  storageBucket: "monthly-reseller-finance-app.firebasestorage.app",
-  messagingSenderId: "371369393795",
-  appId: "1:371369393795:web:629f4ab51aa556cbb265b6"
+  apiKey: "AIzaSyBdjlO1S_BMExJt25laptFFCSlIkzOcxqI",
+  authDomain: "resellerfinanceapp.firebaseapp.com",
+  projectId: "resellerfinanceapp",
+  storageBucket: "resellerfinanceapp.firebasestorage.app",
+  messagingSenderId: "625217355771",
+  appId: "1:625217355771:web:3c50262a61894622c1555e"
 };
-
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
