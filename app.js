@@ -86,10 +86,39 @@ function recalcProfit(item) {
 // ---------------- CSV Parsing ----------------
 
 function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-  if (lines.length < 2) return [];
+  const rows = [];
+  let current = "";
+  let insideQuotes = false;
+  let row = [];
 
-  const rows = lines.map(line => line.split(",").map(col => col.trim()));
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && insideQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      row.push(current.trim());
+      current = "";
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (current.length > 0 || row.length > 0) {
+        row.push(current.trim());
+        rows.push(row);
+      }
+      current = "";
+      row = [];
+    } else {
+      current += char;
+    }
+  }
+
+  if (current.length > 0 || row.length > 0) {
+    row.push(current.trim());
+    rows.push(row);
+  }
 
   const header = rows[0].map(h => h.toLowerCase());
   rows.shift();
@@ -103,30 +132,29 @@ function parseCsv(text) {
   const parsed = [];
 
   for (const cols of rows) {
-    if (!cols.length || idxTitle === -1 || !cols[idxTitle]) continue;
+    if (!cols.length || !cols[idxTitle]) continue;
 
     const title = cols[idxTitle];
-    const qty = idxQty !== -1 ? Number(cols[idxQty]) || 0 : 0;
+    const qty = Number(cols[idxQty]) || 0;
+    const totalSales = parseFloat((cols[idxTotalSales] || "").replace(/[^0-9.-]+/g, "")) || 0;
+    const sellingCosts = parseFloat((cols[idxSellingCosts] || "").replace(/[^0-9.-]+/g, "")) || 0;
+    const cogs = parseFloat((cols[idxCogs] || "").replace(/[^0-9.-]+/g, "")) || 0;
 
-    const totalSales =
-      idxTotalSales !== -1 ? cleanNumber(cols[idxTotalSales]) : 0;
+    const profit = totalSales - sellingCosts - cogs;
 
-    const sellingCosts =
-      idxSellingCosts !== -1 ? cleanNumber(cols[idxSellingCosts]) : 0;
-
-    const cogs =
-      idxCogs !== -1 && cols[idxCogs]
-        ? cleanNumber(cols[idxCogs])
-        : 0;
-
-    const item = { title, qty, totalSales, sellingCosts, cogs, profit: 0 };
-    recalcProfit(item);
-
-    parsed.push(item);
+    parsed.push({
+      title,
+      qty,
+      totalSales,
+      sellingCosts,
+      cogs,
+      profit
+    });
   }
 
   return parsed;
 }
+
 
 // ---------------- Sales Rendering ----------------
 
