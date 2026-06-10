@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reseller Finance Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header class="app-header">
+    <h1>Reseller Finance Dashboard</h1>
+    <p>Track sales, costs, COGS, and profit from your eBay CSV.</p>
+  </header>
+
+  <main class="app-main">
+
+    <!-- CSV IMPORT -->
+    <section class="card">
+      <h2>Import eBay Sales CSV</h2>
+      <p>Select your CSV and click <strong>Load CSV</strong>.</p>
+
+      <div class="upload-row">
+        <input type="file" id="csvFileInput" accept=".csv" />
+        <button id="loadCsvBtn" type="button">Load CSV</button>
+      </div>
+
+      <p class="hint">
+        Expected headers in Excel:<br>
+        <strong>Listing title, Quantity sold, Total sales (Includes taxes), Total selling costs, Cogs</strong>
+      </p>
+
+      <p id="uploadStatus" class="status"></p>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="summary-grid">
+      <div class="summary-card"><h3>Total Revenue</h3><p id="totalRevenue">$0.00</p></div>
+      <div class="summary-card"><h3>Total COGS</h3><p id="totalCogs">$0.00</p></div>
+      <div class="summary-card"><h3>Total Profit</h3><p id="totalProfit">$0.00</p></div>
+      <div class="summary-card"><h3>Sell-Through Rate</h3><p id="sellThroughRate">N/A</p></div>
+      <div class="summary-card"><h3>Average Sale Price</h3><p id="avgSalePrice">$0.00</p></div>
+    </section>
+
+    <!-- MANUAL SALE ENTRY -->
+    <section class="card">
+      <h2>Add Sale Manually</h2>
+
+      <div class="form-grid">
+        <label>Title
+          <input type="text" id="manualTitle" />
+        </label>
+
+        <label>Total Sales
+          <input type="number" id="manualSale" step="0.01" />
+        </label>
+
+        <label>Total Selling Costs
+          <input type="number" id="manualCosts" step="0.01" />
+        </label>
+
+        <label>COGS
+          <input type="number" id="manualCogs" step="0.01" />
+        </label>
+      </div>
+
+      <button id="addSaleBtn" type="button">Add Sale</button>
+      <p id="manualStatus" class="status"></p>
+    </section>
+
+    <!-- SALES TABLE -->
+    <section class="card">
+      <h2>Sales</h2>
+
+      <div class="table-wrapper">
+        <table id="salesTable">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Qty</th>
+              <th>Total Sales</th>
+              <th>Total Selling Costs</th>
+              <th>COGS (editable)</th>
+              <th>Profit</th>
+            </tr>
+          </thead>
+          <tbody id="salesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-actions">
+        <button id="clearDataBtn" class="danger" type="button">Clear All Data</button>
+        <p id="clearStatus" class="status"></p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>Data is stored locally in your browser.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
