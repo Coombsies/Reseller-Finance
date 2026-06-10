@@ -3,7 +3,7 @@
 // ------------------------------
 import { db } from "./firebase.js";
 import {
-  collection, doc, setDoc, getDoc, getDocs,
+  collection, doc, setDoc, getDoc,
   updateDoc, deleteDoc, onSnapshot, addDoc
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
@@ -17,6 +17,87 @@ const salesCol = collection(db, "users", uid, "sales");
 const purchasesCol = collection(db, "users", uid, "purchases");
 const monthsCol = collection(db, "users", uid, "months");
 const settingsDoc = doc(db, "users", uid, "settings", "salaryGoal");
+
+// ------------------------------
+// MONTH CLOSE LOGIC
+// ------------------------------
+async function getCurrentMonthDoc() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const id = `${year}-${month}`;
+  return doc(monthsCol, id);
+}
+
+async function ensureMonthExists() {
+  const monthDoc = await getCurrentMonthDoc();
+  const snap = await getDoc(monthDoc);
+
+  if (!snap.exists()) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+
+    // Grace period = end of next month’s 1st day
+    const grace = new Date(year, month, 1, 23, 59, 59);
+
+    await setDoc(monthDoc, {
+      profit: 0,
+      salaryPaid: 0,
+      inventoryBudget: 0,
+      inventorySpent: 0,
+      businessSavings: 0,
+      isLocked: false,
+      gracePeriodEnds: grace.toISOString()
+    });
+  }
+}
+
+async function isMonthLocked() {
+  const monthDoc = await getCurrentMonthDoc();
+  const snap = await getDoc(monthDoc);
+  if (!snap.exists()) return false;
+
+  const data = snap.data();
+  const now = new Date();
+  const grace = new Date(data.gracePeriodEnds);
+
+  // If grace period passed → lock it
+  if (now > grace && !data.isLocked) {
+    await updateDoc(monthDoc, { isLocked: true });
+    return true;
+  }
+
+  return data.isLocked;
+}
+
+async function closeMonthManually() {
+  const monthDoc = await getCurrentMonthDoc();
+  const snap = await getDoc(monthDoc);
+  if (!snap.exists()) return;
+
+  // Force lock
+  await updateDoc(monthDoc, { isLocked: true });
+
+  // Create next month
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextId = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+
+  const grace = new Date(next.getFullYear(), next.getMonth() + 1, 1, 23, 59, 59);
+
+  await setDoc(doc(monthsCol, nextId), {
+    profit: 0,
+    salaryPaid: 0,
+    inventoryBudget: 0,
+    inventorySpent: 0,
+    businessSavings: 0,
+    isLocked: false,
+    gracePeriodEnds: grace.toISOString()
+  });
+
+  document.getElementById("monthStatus").textContent = "Month closed and next month created.";
+}
 
 // ------------------------------
 // CSV PARSER
@@ -254,87 +335,9 @@ function updateInventorySpent(purchases) {
   const spent = purchases.reduce((a, p) => a + p.amount, 0);
   document.getElementById("inventorySpent").textContent = `$${spent.toFixed(2)}`;
 }
+
 // ------------------------------
-// MONTH CLOSE LOGIC
+// STARTUP
 // ------------------------------
-
-async function getCurrentMonthDoc() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const id = `${year}-${month}`;
-  return doc(monthsCol, id);
-}
-
-async function ensureMonthExists() {
-  const monthDoc = await getCurrentMonthDoc();
-  const snap = await getDoc(monthDoc);
-
-  if (!snap.exists()) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-
-    // Grace period = end of next month’s 1st day
-    const grace = new Date(year, month, 1, 23, 59, 59);
-
-    await setDoc(monthDoc, {
-      profit: 0,
-      salaryPaid: 0,
-      inventoryBudget: 0,
-      inventorySpent: 0,
-      businessSavings: 0,
-      isLocked: false,
-      gracePeriodEnds: grace.toISOString()
-    });
-  }
-}
-
-async function isMonthLocked() {
-  const monthDoc = await getCurrentMonthDoc();
-  const snap = await getDoc(monthDoc);
-  if (!snap.exists()) return false;
-
-  const data = snap.data();
-  const now = new Date();
-  const grace = new Date(data.gracePeriodEnds);
-
-  // If grace period passed → lock it
-  if (now > grace && !data.isLocked) {
-    await updateDoc(monthDoc, { isLocked: true });
-    return true;
-  }
-
-  return data.isLocked;
-}
-
-async function closeMonthManually() {
-  const monthDoc = await getCurrentMonthDoc();
-  const snap = await getDoc(monthDoc);
-  if (!snap.exists()) return;
-
-  // Force lock
-  await updateDoc(monthDoc, { isLocked: true });
-
-  // Create next month
-  const now = new Date();
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const nextId = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
-
-  const grace = new Date(next.getFullYear(), next.getMonth() + 1, 1, 23, 59, 59);
-
-  await setDoc(doc(monthsCol, nextId), {
-    profit: 0,
-    salaryPaid: 0,
-    inventoryBudget: 0,
-    inventorySpent: 0,
-    businessSavings: 0,
-    isLocked: false,
-    gracePeriodEnds: grace.toISOString()
-  });
-
-  document.getElementById("monthStatus").textContent = "Month closed and next month created.";
-}
 document.getElementById("closeMonthBtn").addEventListener("click", closeMonthManually);
 ensureMonthExists();
-
