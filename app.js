@@ -1,23 +1,22 @@
-// Simple Reseller Finance Dashboard
-// - CSV upload
+// ------------------------------------------------------------
+// Reseller Finance Dashboard (Clean Rebuild)
+// - CSV upload (5-column structure)
 // - LocalStorage persistence
 // - Profit calculations
 // - Manual add sale
+// ------------------------------------------------------------
 
-const STORAGE_KEY = "reseller_finance_sales_v1";
-
+const STORAGE_KEY = "reseller_finance_sales_v2";
 let sales = [];
 
-// ---------- Helpers ----------
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
 
 function loadSalesFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      sales = [];
-      return;
-    }
-    sales = JSON.parse(raw);
+    sales = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(sales)) sales = [];
   } catch (e) {
     console.error("Failed to load storage", e);
@@ -38,86 +37,64 @@ function formatCurrency(value) {
   return `$${num.toFixed(2)}`;
 }
 
-// ---------- CSV Parsing ----------
+function cleanNumber(str) {
+  if (!str) return 0;
+  return parseFloat(str.replace(/[^0-9.-]+/g, "")) || 0;
+}
+
+// ------------------------------------------------------------
+// CSV Parsing (New 5-Column Structure)
+// ------------------------------------------------------------
+// A: Title
+// B: Quantity Sold
+// C: Total Sales (includes taxes + shipping)
+// D: Total Selling Costs
+// E: COGS (default 0)
 
 function parseCsv(text) {
-  // Proper CSV parser that handles quoted fields and commas inside quotes
-  const rows = [];
-  let current = "";
-  let insideQuotes = false;
-  let row = [];
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+  if (lines.length < 2) return [];
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
+  const rows = lines.map(line => {
+    // simple split is fine because your CSV has no quoted commas
+    return line.split(",").map(col => col.trim());
+  });
 
-    if (char === '"' && insideQuotes && next === '"') {
-      current += '"';
-      i++;
-    } else if (char === '"') {
-      insideQuotes = !insideQuotes;
-    } else if (char === "," && !insideQuotes) {
-      row.push(current.trim());
-      current = "";
-    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
-      if (current.length > 0 || row.length > 0) {
-        row.push(current.trim());
-        rows.push(row);
-      }
-      current = "";
-      row = [];
-    } else {
-      current += char;
-    }
-  }
-
-  if (current.length > 0 || row.length > 0) {
-    row.push(current.trim());
-    rows.push(row);
-  }
-
-  const header = rows[0].map(h => h.toLowerCase());
-
-  const find = names => {
-    for (const name of names) {
-      const idx = header.indexOf(name.toLowerCase());
-      if (idx !== -1) return idx;
-    }
-    return -1;
-  };
-
-  const idxTitle = find(["item title", "title"]);
-  const idxSale = find(["sale", "sale price", "total sale"]);
-  const idxShipping = find(["shipping", "shipping and handling"]);
-  const idxFees = find(["fees", "ebay fees", "total fees"]);
-  const idxCogs = find(["cogs", "cost", "cost of goods"]);
+  // Remove header
+  rows.shift();
 
   const parsed = [];
 
-  for (let i = 1; i < rows.length; i++) {
-    const cols = rows[i];
+  for (const cols of rows) {
+    if (cols.length < 4) continue;
 
-    const title = idxTitle !== -1 ? cols[idxTitle] : `Item ${i}`;
-    const sale = idxSale !== -1 ? Number(cols[idxSale]) || 0 : 0;
-    const shipping = idxShipping !== -1 ? Number(cols[idxShipping]) || 0 : 0;
-    const fees = idxFees !== -1 ? Number(cols[idxFees]) || 0 : 0;
-    const cogs = idxCogs !== -1 ? Number(cols[idxCogs]) || 0 : 0;
+    const title = cols[0] || "Untitled";
+    const qty = Number(cols[1]) || 1;
+
+    const totalSales = cleanNumber(cols[2]);
+    const sellingCosts = cleanNumber(cols[3]);
+
+    // Column E = COGS (default 0)
+    const cogs = cols[4] ? cleanNumber(cols[4]) : 0;
+
+    const profit = totalSales - sellingCosts - cogs;
 
     parsed.push({
       title,
-      sale,
-      shipping,
-      fees,
+      qty,
+      totalSales,
+      sellingCosts,
       cogs,
-      profit: sale + shipping - fees - cogs
+      profit
     });
   }
 
   return parsed;
 }
 
-
-// ---------- Rendering ----------
+// ------------------------------------------------------------
+// Rendering
+// ------------------------------------------------------------
 
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -126,30 +103,14 @@ function renderSalesTable() {
   sales.forEach((item) => {
     const tr = document.createElement("tr");
 
-    const tdTitle = document.createElement("td");
-    tdTitle.textContent = item.title;
-
-    const tdSale = document.createElement("td");
-    tdSale.textContent = formatCurrency(item.sale);
-
-    const tdShipping = document.createElement("td");
-    tdShipping.textContent = formatCurrency(item.shipping);
-
-    const tdFees = document.createElement("td");
-    tdFees.textContent = formatCurrency(item.fees);
-
-    const tdCogs = document.createElement("td");
-    tdCogs.textContent = formatCurrency(item.cogs);
-
-    const tdProfit = document.createElement("td");
-    tdProfit.textContent = formatCurrency(item.profit);
-
-    tr.appendChild(tdTitle);
-    tr.appendChild(tdSale);
-    tr.appendChild(tdShipping);
-    tr.appendChild(tdFees);
-    tr.appendChild(tdCogs);
-    tr.appendChild(tdProfit);
+    tr.innerHTML = `
+      <td>${item.title}</td>
+      <td>${item.qty}</td>
+      <td>${formatCurrency(item.totalSales)}</td>
+      <td>${formatCurrency(item.sellingCosts)}</td>
+      <td>${formatCurrency(item.cogs)}</td>
+      <td>${formatCurrency(item.profit)}</td>
+    `;
 
     tbody.appendChild(tr);
   });
@@ -161,13 +122,11 @@ function renderSummary() {
   let totalProfit = 0;
 
   sales.forEach((item) => {
-    totalRevenue += Number(item.sale) || 0;
-    totalCogs += Number(item.cogs) || 0;
-    totalProfit += Number(item.profit) || 0;
+    totalRevenue += item.totalSales || 0;
+    totalCogs += item.cogs || 0;
+    totalProfit += item.profit || 0;
   });
 
-  const sellThrough =
-    sales.length > 0 ? (sales.length / sales.length) * 100 : 0; // placeholder
   const avgSalePrice =
     sales.length > 0 ? totalRevenue / sales.length : 0;
 
@@ -177,8 +136,8 @@ function renderSummary() {
     formatCurrency(totalCogs);
   document.getElementById("totalProfit").textContent =
     formatCurrency(totalProfit);
-  document.getElementById("sellThrough").textContent =
-    sellThrough.toFixed(1) + "%";
+  document.getElementById("sellThroughRate").textContent =
+    "N/A"; // not used in this version
   document.getElementById("avgSalePrice").textContent =
     formatCurrency(avgSalePrice);
 }
@@ -188,7 +147,9 @@ function renderAll() {
   renderSummary();
 }
 
-// ---------- Event Handlers ----------
+// ------------------------------------------------------------
+// Event Handlers
+// ------------------------------------------------------------
 
 function handleLoadCsv() {
   const fileInput = document.getElementById("csvFileInput");
@@ -196,7 +157,7 @@ function handleLoadCsv() {
 
   status.textContent = "";
 
-  const file = fileInput.files && fileInput.files[0];
+  const file = fileInput.files?.[0];
   if (!file) {
     status.textContent = "No file selected.";
     return;
@@ -205,85 +166,4 @@ function handleLoadCsv() {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const text = e.target.result;
-      const parsed = parseCsv(text);
-      if (parsed.length === 0) {
-        status.textContent =
-          "CSV parsed but no rows found. Check header names.";
-        return;
-      }
-
-      sales = sales.concat(parsed);
-      saveSalesToStorage();
-      renderAll();
-
-      status.textContent = `Loaded ${parsed.length} rows from CSV and saved.`;
-    } catch (err) {
-      console.error(err);
-      status.textContent = "Error parsing CSV.";
-    }
-  };
-  reader.onerror = () => {
-    status.textContent = "Error reading file.";
-  };
-
-  reader.readAsText(file);
-}
-
-function handleAddSale() {
-  const titleInput = document.getElementById("manualTitle");
-  const saleInput = document.getElementById("manualSale");
-  const shippingInput = document.getElementById("manualShipping");
-  const feesInput = document.getElementById("manualFees");
-  const cogsInput = document.getElementById("manualCogs");
-  const status = document.getElementById("manualStatus");
-
-  const title = titleInput.value.trim() || "Manual Sale";
-  const sale = Number(saleInput.value) || 0;
-  const shipping = Number(shippingInput.value) || 0;
-  const fees = Number(feesInput.value) || 0;
-  const cogs = Number(cogsInput.value) || 0;
-  const profit = sale + shipping - fees - cogs;
-
-  sales.push({ title, sale, shipping, fees, cogs, profit });
-  saveSalesToStorage();
-  renderAll();
-
-  status.textContent = "Manual sale added and saved.";
-
-  titleInput.value = "";
-  saleInput.value = "";
-  shippingInput.value = "";
-  feesInput.value = "";
-  cogsInput.value = "";
-}
-
-function handleClearData() {
-  const status = document.getElementById("clearStatus");
-  if (!confirm("Clear all saved sales data?")) {
-    status.textContent = "Clear cancelled.";
-    return;
-  }
-
-  sales = [];
-  saveSalesToStorage();
-  renderAll();
-  status.textContent = "All data cleared.";
-}
-
-// ---------- Init ----------
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadSalesFromStorage();
-  renderAll();
-
-  document
-    .getElementById("loadCsvBtn")
-    .addEventListener("click", handleLoadCsv);
-  document
-    .getElementById("addSaleBtn")
-    .addEventListener("click", handleAddSale);
-  document
-    .getElementById("clearDataBtn")
-    .addEventListener("click", handleClearData);
-});
+      const text = e.target.result
