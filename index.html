@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
   <header class="app-header">
     <h1>Reseller Finance Dashboard</h1>
@@ -13,48 +14,91 @@
   </header>
 
   <main class="app-main">
+
+    <!-- CSV IMPORT -->
     <section class="card">
       <h2>Import eBay Sales CSV</h2>
       <p>Choose your eBay Sales Report CSV file and click <strong>Load CSV</strong>.</p>
+
       <div class="upload-row">
         <input type="file" id="csvFileInput" accept=".csv" />
-        <button id="loadCsvBtn">Load CSV</button>
+        <button id="loadCsvBtn" type="button">Load CSV</button>
       </div>
-      <p class="hint">Expected columns: Item Title, Sale, Shipping, Fees, COGS.</p>
+
+      <p class="hint">
+        Expected columns:<br>
+        <strong>Title, Quantity, Total Sales, Selling Costs, COGS</strong>
+      </p>
+
       <p id="uploadStatus" class="status"></p>
     </section>
 
+    <!-- SUMMARY -->
     <section class="summary-grid">
-      <div class="summary-card"><h3>Total Revenue</h3><p id="totalRevenue">$0.00</p></div>
-      <div class="summary-card"><h3>Total COGS</h3><p id="totalCogs">$0.00</p></div>
-      <div class="summary-card"><h3>Total Profit</h3><p id="totalProfit">$0.00</p></div>
-      <div class="summary-card"><h3>Sell-Through Rate</h3><p id="sellThrough">0.0%</p></div>
-      <div class="summary-card"><h3>Average Sale Price</h3><p id="avgSalePrice">$0.00</p></div>
+      <div class="summary-card">
+        <h3>Total Revenue</h3>
+        <p id="totalRevenue">$0.00</p>
+      </div>
+
+      <div class="summary-card">
+        <h3>Total COGS</h3>
+        <p id="totalCogs">$0.00</p>
+      </div>
+
+      <div class="summary-card">
+        <h3>Total Profit</h3>
+        <p id="totalProfit">$0.00</p>
+      </div>
+
+      <div class="summary-card">
+        <h3>Sell-Through Rate</h3>
+        <p id="sellThroughRate">N/A</p>
+      </div>
+
+      <div class="summary-card">
+        <h3>Average Sale Price</h3>
+        <p id="avgSalePrice">$0.00</p>
+      </div>
     </section>
 
+    <!-- MANUAL SALE ENTRY -->
     <section class="card">
       <h2>Add Sale Manually</h2>
+
       <div class="form-grid">
-        <label>Title<input type="text" id="manualTitle" /></label>
-        <label>Sale<input type="number" id="manualSale" step="0.01" /></label>
-        <label>Shipping<input type="number" id="manualShipping" step="0.01" /></label>
-        <label>Fees<input type="number" id="manualFees" step="0.01" /></label>
-        <label>COGS<input type="number" id="manualCogs" step="0.01" /></label>
+        <label>Title
+          <input type="text" id="manualTitle" />
+        </label>
+
+        <label>Total Sales
+          <input type="number" id="manualSale" step="0.01" />
+        </label>
+
+        <label>Selling Costs
+          <input type="number" id="manualCosts" step="0.01" />
+        </label>
+
+        <label>COGS
+          <input type="number" id="manualCogs" step="0.01" />
+        </label>
       </div>
-      <button id="addSaleBtn">Add Sale</button>
+
+      <button id="addSaleBtn" type="button">Add Sale</button>
       <p id="manualStatus" class="status"></p>
     </section>
 
+    <!-- SALES TABLE -->
     <section class="card">
       <h2>Sales</h2>
+
       <div class="table-wrapper">
         <table id="salesTable">
           <thead>
             <tr>
               <th>Title</th>
-              <th>Sale</th>
-              <th>Shipping</th>
-              <th>Fees</th>
+              <th>Qty</th>
+              <th>Total Sales</th>
+              <th>Selling Costs</th>
               <th>COGS</th>
               <th>Profit</th>
             </tr>
@@ -62,11 +106,13 @@
           <tbody id="salesTableBody"></tbody>
         </table>
       </div>
+
       <div class="table-actions">
-        <button id="clearDataBtn" class="danger">Clear All Data</button>
+        <button id="clearDataBtn" class="danger" type="button">Clear All Data</button>
         <p id="clearStatus" class="status"></p>
       </div>
     </section>
+
   </main>
 
   <footer class="app-footer">
