@@ -3,7 +3,7 @@
 // ------------------------------
 import { db } from "./firebase.js";
 import {
-  collection, doc, setDoc, getDoc,
+  collection, doc, setDoc, getDoc, getDocs,
   updateDoc, deleteDoc, onSnapshot, addDoc
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
@@ -26,6 +26,7 @@ async function getCurrentMonthDoc() {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const id = `${year}-${month}`;
+  document.getElementById("currentMonthName").textContent = id;
   return doc(monthsCol, id);
 }
 
@@ -128,6 +129,10 @@ function parseCSV(text) {
   return rows;
 }
 
+function toNum(v) {
+  return Number(String(v || "0").replace(/[^0-9.-]/g, ""));
+}
+
 // ------------------------------
 // CSV UPLOAD HANDLER
 // ------------------------------
@@ -151,13 +156,18 @@ document.getElementById("loadCsvBtn").addEventListener("click", async () => {
   for (let r of rows) {
     const [title, qty, totalSales, totalCosts, cogs] = r;
 
+    const nQty = toNum(qty);
+    const nSales = toNum(totalSales);
+    const nCosts = toNum(totalCosts);
+    const nCogs = toNum(cogs);
+
     await addDoc(salesCol, {
       title,
-      qty: Number(qty),
-      totalSales: Number(totalSales),
-      totalCosts: Number(totalCosts),
-      cogs: Number(cogs || 0),
-      profit: Number(totalSales) - Number(totalCosts) - Number(cogs || 0)
+      qty: nQty,
+      totalSales: nSales,
+      totalCosts: nCosts,
+      cogs: nCogs,
+      profit: nSales - nCosts - nCogs
     });
   }
 
@@ -169,7 +179,7 @@ document.getElementById("loadCsvBtn").addEventListener("click", async () => {
 // ------------------------------
 onSnapshot(salesCol, (snapshot) => {
   const sales = [];
-  snapshot.forEach(doc => sales.push({ id: doc.id, ...doc.data() }));
+  snapshot.forEach(docSnap => sales.push({ id: docSnap.id, ...docSnap.data() }));
   renderSales(sales);
   updateSummary(sales);
   updateMonthProfit(sales);
@@ -177,7 +187,7 @@ onSnapshot(salesCol, (snapshot) => {
 
 onSnapshot(purchasesCol, (snapshot) => {
   const purchases = [];
-  snapshot.forEach(doc => purchases.push({ id: doc.id, ...doc.data() }));
+  snapshot.forEach(docSnap => purchases.push({ id: docSnap.id, ...docSnap.data() }));
   renderPurchases(purchases);
   updateInventorySpent(purchases);
 });
@@ -190,7 +200,7 @@ onSnapshot(settingsDoc, (snapshot) => {
 
 onSnapshot(monthsCol, (snapshot) => {
   const months = [];
-  snapshot.forEach(doc => months.push({ id: doc.id, ...doc.data() }));
+  snapshot.forEach(docSnap => months.push({ id: docSnap.id, ...docSnap.data() }));
   renderMonthArchive(months);
 });
 
@@ -204,9 +214,9 @@ document.getElementById("addSaleBtn").addEventListener("click", async () => {
   }
 
   const title = document.getElementById("manualTitle").value;
-  const totalSales = Number(document.getElementById("manualSale").value);
-  const totalCosts = Number(document.getElementById("manualCosts").value);
-  const cogs = Number(document.getElementById("manualCogs").value);
+  const totalSales = toNum(document.getElementById("manualSale").value);
+  const totalCosts = toNum(document.getElementById("manualCosts").value);
+  const cogs = toNum(document.getElementById("manualCogs").value);
 
   await addDoc(salesCol, {
     title,
@@ -230,7 +240,7 @@ document.getElementById("addPurchaseBtn").addEventListener("click", async () => 
   }
 
   const desc = document.getElementById("purchaseDesc").value;
-  const amount = Number(document.getElementById("purchaseAmount").value);
+  const amount = toNum(document.getElementById("purchaseAmount").value);
 
   await addDoc(purchasesCol, { description: desc, amount });
 
@@ -241,7 +251,7 @@ document.getElementById("addPurchaseBtn").addEventListener("click", async () => 
 // SALARY GOAL
 // ------------------------------
 document.getElementById("updateSalaryGoalBtn").addEventListener("click", async () => {
-  const value = Number(document.getElementById("salaryGoalInput").value);
+  const value = toNum(document.getElementById("salaryGoalInput").value);
   await setDoc(settingsDoc, { value });
 });
 
@@ -257,10 +267,10 @@ function renderSales(sales) {
     row.innerHTML = `
       <td>${s.title}</td>
       <td>${s.qty}</td>
-      <td>$${s.totalSales.toFixed(2)}</td>
-      <td>$${s.totalCosts.toFixed(2)}</td>
-      <td><input type="number" value="${s.cogs}" data-id="${s.id}" class="cogsInput"></td>
-      <td>$${s.profit.toFixed(2)}</td>
+      <td>$${(s.totalSales || 0).toFixed(2)}</td>
+      <td>$${(s.totalCosts || 0).toFixed(2)}</td>
+      <td><input type="number" value="${s.cogs || 0}" data-id="${s.id}" class="cogsInput"></td>
+      <td>$${(s.profit || 0).toFixed(2)}</td>
     `;
     body.appendChild(row);
   });
@@ -268,14 +278,17 @@ function renderSales(sales) {
   document.querySelectorAll(".cogsInput").forEach(input => {
     input.addEventListener("change", async (e) => {
       const id = e.target.dataset.id;
-      const newCogs = Number(e.target.value);
+      const newCogs = toNum(e.target.value);
 
       const snap = await getDoc(doc(salesCol, id));
       const data = snap.data();
 
+      const nSales = data.totalSales || 0;
+      const nCosts = data.totalCosts || 0;
+
       await updateDoc(doc(salesCol, id), {
         cogs: newCogs,
-        profit: data.totalSales - data.totalCosts - newCogs
+        profit: nSales - nCosts - newCogs
       });
     });
   });
@@ -289,7 +302,7 @@ function renderPurchases(purchases) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${p.description}</td>
-      <td>$${p.amount.toFixed(2)}</td>
+      <td>$${(p.amount || 0).toFixed(2)}</td>
     `;
     body.appendChild(row);
   });
@@ -303,11 +316,11 @@ function renderMonthArchive(months) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${m.id}</td>
-      <td>$${m.profit.toFixed(2)}</td>
-      <td>$${m.salaryPaid.toFixed(2)}</td>
-      <td>$${m.inventoryBudget.toFixed(2)}</td>
-      <td>$${m.inventorySpent.toFixed(2)}</td>
-      <td>$${m.businessSavings.toFixed(2)}</td>
+      <td>$${(m.profit || 0).toFixed(2)}</td>
+      <td>$${(m.salaryPaid || 0).toFixed(2)}</td>
+      <td>$${(m.inventoryBudget || 0).toFixed(2)}</td>
+      <td>$${(m.inventorySpent || 0).toFixed(2)}</td>
+      <td>$${(m.businessSavings || 0).toFixed(2)}</td>
     `;
     body.appendChild(row);
   });
@@ -317,9 +330,9 @@ function renderMonthArchive(months) {
 // SUMMARY CALCULATIONS
 // ------------------------------
 function updateSummary(sales) {
-  const revenue = sales.reduce((a, s) => a + s.totalSales, 0);
-  const cogs = sales.reduce((a, s) => a + s.cogs, 0);
-  const profit = sales.reduce((a, s) => a + s.profit, 0);
+  const revenue = sales.reduce((a, s) => a + (s.totalSales || 0), 0);
+  const cogs = sales.reduce((a, s) => a + (s.cogs || 0), 0);
+  const profit = sales.reduce((a, s) => a + (s.profit || 0), 0);
 
   document.getElementById("totalRevenue").textContent = `$${revenue.toFixed(2)}`;
   document.getElementById("totalCogs").textContent = `$${cogs.toFixed(2)}`;
@@ -327,14 +340,27 @@ function updateSummary(sales) {
 }
 
 function updateMonthProfit(sales) {
-  const profit = sales.reduce((a, s) => a + s.profit, 0);
+  const profit = sales.reduce((a, s) => a + (s.profit || 0), 0);
   document.getElementById("monthProfit").textContent = `$${profit.toFixed(2)}`;
 }
 
 function updateInventorySpent(purchases) {
-  const spent = purchases.reduce((a, p) => a + p.amount, 0);
+  const spent = purchases.reduce((a, p) => a + (p.amount || 0), 0);
   document.getElementById("inventorySpent").textContent = `$${spent.toFixed(2)}`;
 }
+
+// ------------------------------
+// CLEAR ALL SALES DATA
+// ------------------------------
+document.getElementById("clearDataBtn").addEventListener("click", async () => {
+  const snap = await getDocs(salesCol);
+  const deletions = [];
+  snap.forEach(d => {
+    deletions.push(deleteDoc(doc(salesCol, d.id)));
+  });
+  await Promise.all(deletions);
+  document.getElementById("clearStatus").textContent = "All sales data cleared.";
+});
 
 // ------------------------------
 // STARTUP
