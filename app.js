@@ -51,6 +51,11 @@ function parseCSV(text) {
 // CSV UPLOAD HANDLER
 // ------------------------------
 document.getElementById("loadCsvBtn").addEventListener("click", async () => {
+  if (await isMonthLocked()) {
+    alert("This month is locked. New entries go to the next month.");
+    return;
+  }
+
   const fileInput = document.getElementById("csvFileInput");
   const file = fileInput.files[0];
   if (!file) {
@@ -112,6 +117,11 @@ onSnapshot(monthsCol, (snapshot) => {
 // MANUAL SALE ENTRY
 // ------------------------------
 document.getElementById("addSaleBtn").addEventListener("click", async () => {
+  if (await isMonthLocked()) {
+    alert("This month is locked. New entries go to the next month.");
+    return;
+  }
+
   const title = document.getElementById("manualTitle").value;
   const totalSales = Number(document.getElementById("manualSale").value);
   const totalCosts = Number(document.getElementById("manualCosts").value);
@@ -133,6 +143,11 @@ document.getElementById("addSaleBtn").addEventListener("click", async () => {
 // PURCHASE ENTRY
 // ------------------------------
 document.getElementById("addPurchaseBtn").addEventListener("click", async () => {
+  if (await isMonthLocked()) {
+    alert("This month is locked. New entries go to the next month.");
+    return;
+  }
+
   const desc = document.getElementById("purchaseDesc").value;
   const amount = Number(document.getElementById("purchaseAmount").value);
 
@@ -320,3 +335,6 @@ async function closeMonthManually() {
 
   document.getElementById("monthStatus").textContent = "Month closed and next month created.";
 }
+document.getElementById("closeMonthBtn").addEventListener("click", closeMonthManually);
+ensureMonthExists();
+
