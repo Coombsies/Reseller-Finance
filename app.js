@@ -56,8 +56,9 @@ function ensureMonthExists(monthId) {
       inventoryBudget: 0,
       inventorySpent: 0,
       businessSavings: 0,
-      salaryPayments: []
-     isLocked: false
+      salaryPayments: [],
+isLocked: false
+
     };
     saveJSON(STORAGE_KEYS.months, months);
   }
