@@ -291,44 +291,61 @@ function initSalaryPayments() {
   const payFullBtn = document.getElementById("payFullSalaryBtn");
   const statusEl = document.getElementById("salaryStatus");
 
-  payBtn.addEventListener("click", () => {
-    const amount = toNum(payInput.value);
-    if (amount <= 0) {
-      statusEl.textContent = "Enter a valid salary amount.";
-      return;
-    }
+payBtn.addEventListener("click", () => {
+  const amount = toNum(payInput.value);
+  if (amount <= 0) {
+    statusEl.textContent = "Enter a valid salary amount.";
+    return;
+  }
 
-    const { data } = getCurrentMonth();
-    data.salaryPaid = (data.salaryPaid || 0) + amount;
+  const { data } = getCurrentMonth();
+  data.salaryPaid = (data.salaryPaid || 0) + amount;
 
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
-    setTimeout(() => statusEl.textContent = "", 2500);
-
-    payInput.value = "";
-    recomputeGlobalSummary();
+  // ⭐ ADD THIS — RECORD PAYMENT
+  data.salaryPayments.push({
+    date: new Date().toISOString().split("T")[0],
+    amount
   });
 
-  payFullBtn.addEventListener("click", () => {
-    const goal = settings.salaryGoal || 0;
-    const { data } = getCurrentMonth();
+  saveJSON(STORAGE_KEYS.months, months);
 
-    const remaining = goal - (data.salaryPaid || 0);
-    if (remaining <= 0) {
-      statusEl.textContent = "Salary goal already met.";
-      return;
-    }
+  statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
+  setTimeout(() => statusEl.textContent = "", 2500);
 
-    data.salaryPaid += remaining;
-    saveJSON(STORAGE_KEYS.months, months);
+  payInput.value = "";
 
-    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
-    setTimeout(() => statusEl.textContent = "", 2500);
+  recomputeGlobalSummary();
+  renderSalaryPayments(); // ⭐ ADD THIS
+});
 
-    recomputeGlobalSummary();
+
+payFullBtn.addEventListener("click", () => {
+  const goal = settings.salaryGoal || 0;
+  const { data } = getCurrentMonth();
+
+  const remaining = goal - (data.salaryPaid || 0);
+  if (remaining <= 0) {
+    statusEl.textContent = "Salary goal already met.";
+    return;
+  }
+
+  data.salaryPaid += remaining;
+
+  // ⭐ RECORD PAYMENT
+  data.salaryPayments.push({
+    date: new Date().toISOString().split("T")[0],
+    amount: remaining
   });
-}
+
+  saveJSON(STORAGE_KEYS.months, months);
+
+  statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
+  setTimeout(() => statusEl.textContent = "", 2500);
+
+  recomputeGlobalSummary();
+  renderSalaryPayments(); // ⭐ UPDATE TABLE
+});
+
 
 function updateSalaryProgressBar() {
   const { data } = getCurrentMonth();
