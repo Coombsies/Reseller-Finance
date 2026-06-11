@@ -556,6 +556,8 @@ function init() {
   renderSalesTable();
   renderPurchaseTable();
   renderMonthArchive();
+  renderSalaryPayments();   // ⭐ STEP 6 — THIS IS WHERE IT GOES
 }
+
 
 document.addEventListener("DOMContentLoaded", init);
