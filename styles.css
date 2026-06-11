@@ -171,6 +171,8 @@ button {
   font-weight: 700;
   letter-spacing: 0.3px;
   transition: background 0.2s ease, transform 0.1s ease;
+  position: relative;
+  z-index: 5;
 }
 
 button:hover {
@@ -239,17 +241,22 @@ td {
   gap: 0.6rem;
 }
 
-/* CSV UPLOAD */
+/* CSV UPLOAD — FIXED CLICK ZONE */
 .upload-row {
   display: flex;
   align-items: center;
   gap: 14px;
   margin-top: 12px;
+  width: fit-content;
+  position: relative;
+  z-index: 1;
 }
 
 .file-picker {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 10px 16px;
   background: #1f2833;
   border: 1px solid #2b3642;
@@ -258,6 +265,9 @@ td {
   font-size: 14px;
   color: var(--text-strong);
   transition: background 0.2s ease, box-shadow 0.2s ease;
+  width: auto;
+  height: auto;
+  z-index: 5;
 }
 
 .file-picker:hover {
@@ -267,12 +277,10 @@ td {
 
 .file-picker input[type="file"] {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   opacity: 0;
-  width: 100%;
-  height: 100%;
   cursor: pointer;
+  z-index: 10;
 }
 
 .csv-btn {
@@ -283,6 +291,7 @@ td {
   font-size: 14px;
   font-weight: 700;
   transition: background 0.2s ease, transform 0.1s ease;
+  z-index: 5;
 }
 
 .csv-btn:hover {
