@@ -221,9 +221,8 @@ function deleteSalaryPayment(index) {
   renderSalaryPayments();
   recomputeGlobalSummary();
 }
-
 // ------------------------------
-// RENDER TABLES
+// RENDER TABLES (continued)
 // ------------------------------
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -559,3 +558,44 @@ function initCloseMonth() {
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     let [year, month] = id.split("-").map(Number);
+    month++;
+    if (month > 12) {
+      month = 1;
+      year++;
+    }
+
+    const nextId = `${year}-${String(month).padStart(2, "0")}`;
+    ensureMonthExists(nextId);
+
+    document.getElementById("currentMonthName").textContent = nextId;
+
+    recomputeGlobalSummary();
+    renderPurchaseTable();
+
+    document
+      .getElementById("monthArchiveSection")
+      .scrollIntoView({ behavior: "smooth" });
+  });
+}
+
+// ------------------------------
+// INIT
+// ------------------------------
+function init() {
+  getCurrentMonth();
+
+  initCsvImport();
+  initManualSaleEntry();
+  initPurchases();
+  initClearData();
+  initCloseMonth();
+  initSalaryPayments();
+
+  recomputeGlobalSummary();
+  renderSalesTable();
+  renderPurchaseTable();
+  renderMonthArchive();
+  renderSalaryPayments();
+}
+
+document.addEventListener("DOMContentLoaded", init);
