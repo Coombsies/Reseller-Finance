@@ -76,6 +76,8 @@ body {
   box-shadow: var(--shadow-soft);
   border: 1px solid #151820;
   transition: background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .card:hover {
@@ -172,7 +174,7 @@ button {
   letter-spacing: 0.3px;
   transition: background 0.2s ease, transform 0.1s ease;
   position: relative;
-  z-index: 5;
+  z-index: 20;
 }
 
 button:hover {
@@ -249,7 +251,7 @@ td {
   margin-top: 12px;
   width: fit-content;
   position: relative;
-  z-index: 1;
+  z-index: 5;
 }
 
 .file-picker {
@@ -267,7 +269,7 @@ td {
   transition: background 0.2s ease, box-shadow 0.2s ease;
   width: auto;
   height: auto;
-  z-index: 5;
+  z-index: 10;
 }
 
 .file-picker:hover {
@@ -280,7 +282,7 @@ td {
   inset: 0;
   opacity: 0;
   cursor: pointer;
-  z-index: 10;
+  z-index: 15;
 }
 
 .csv-btn {
@@ -291,7 +293,7 @@ td {
   font-size: 14px;
   font-weight: 700;
   transition: background 0.2s ease, transform 0.1s ease;
-  z-index: 5;
+  z-index: 20;
 }
 
 .csv-btn:hover {
