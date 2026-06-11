@@ -57,7 +57,7 @@ function ensureMonthExists(monthId) {
       inventorySpent: 0,
       businessSavings: 0,
       salaryPayments: [],
-isLocked: false
+      isLocked: false
     };
     saveJSON(STORAGE_KEYS.months, months);
   }
@@ -91,7 +91,7 @@ function parseCsv(text) {
     } else if (char === ',' && !insideQuotes) {
       row.push(current);
       current = "";
-    } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
       if (current.length > 0 || row.length > 0) {
         row.push(current);
         rows.push(row);
@@ -172,7 +172,7 @@ function recomputeGlobalSummary() {
   const monthSales = sales.filter(s => s.monthId === id);
 
   let monthProfit = 0;
-  monthSales.forEach(s => monthProfit += computeSaleProfit(s));
+  monthSales.forEach(s => (monthProfit += computeSaleProfit(s)));
 
   data.profit = monthProfit;
 
@@ -213,7 +213,9 @@ function renderSalesTable() {
       <td>${sale.qty}</td>
       <td>${formatCurrency(toNum(sale.totalSales))}</td>
       <td>${formatCurrency(toNum(sale.totalCosts))}</td>
-      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(2)}" data-index="${index}" class="cogs-input" /></td>
+      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(
+        2
+      )}" data-index="${index}" class="cogs-input" /></td>
       <td>${formatCurrency(profit)}</td>
     `;
 
@@ -252,19 +254,21 @@ function renderMonthArchive() {
   const tbody = document.getElementById("monthArchiveBody");
   tbody.innerHTML = "";
 
-  Object.keys(months).sort().forEach(id => {
-    const m = months[id];
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${id}</td>
-      <td>${formatCurrency(m.profit)}</td>
-      <td>${formatCurrency(m.salaryPaid)}</td>
-      <td>${formatCurrency(m.inventoryBudget)}</td>
-      <td>${formatCurrency(m.inventorySpent)}</td>
-      <td>${formatCurrency(m.businessSavings)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+  Object.keys(months)
+    .sort()
+    .forEach(id => {
+      const m = months[id];
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${id}</td>
+        <td>${formatCurrency(m.profit)}</td>
+        <td>${formatCurrency(m.salaryPaid)}</td>
+        <td>${formatCurrency(m.inventoryBudget)}</td>
+        <td>${formatCurrency(m.inventorySpent)}</td>
+        <td>${formatCurrency(m.businessSavings)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
 }
 
 function renderSalaryPayments() {
@@ -291,61 +295,58 @@ function initSalaryPayments() {
   const payFullBtn = document.getElementById("payFullSalaryBtn");
   const statusEl = document.getElementById("salaryStatus");
 
-payBtn.addEventListener("click", () => {
-  const amount = toNum(payInput.value);
-  if (amount <= 0) {
-    statusEl.textContent = "Enter a valid salary amount.";
-    return;
-  }
+  payBtn.addEventListener("click", () => {
+    const amount = toNum(payInput.value);
+    if (amount <= 0) {
+      statusEl.textContent = "Enter a valid salary amount.";
+      return;
+    }
 
-  const { data } = getCurrentMonth();
-  data.salaryPaid = (data.salaryPaid || 0) + amount;
+    const { data } = getCurrentMonth();
+    data.salaryPaid = (data.salaryPaid || 0) + amount;
 
-  // ⭐ ADD THIS — RECORD PAYMENT
-  data.salaryPayments.push({
-    date: new Date().toISOString().split("T")[0],
-    amount
+    data.salaryPayments.push({
+      date: new Date().toISOString().split("T")[0],
+      amount
+    });
+
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
+    setTimeout(() => (statusEl.textContent = ""), 2500);
+
+    payInput.value = "";
+
+    recomputeGlobalSummary();
+    renderSalaryPayments();
   });
 
-  saveJSON(STORAGE_KEYS.months, months);
+  payFullBtn.addEventListener("click", () => {
+    const goal = settings.salaryGoal || 0;
+    const { data } = getCurrentMonth();
 
-  statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
-  setTimeout(() => statusEl.textContent = "", 2500);
+    const remaining = goal - (data.salaryPaid || 0);
+    if (remaining <= 0) {
+      statusEl.textContent = "Salary goal already met.";
+      return;
+    }
 
-  payInput.value = "";
+    data.salaryPaid += remaining;
 
-  recomputeGlobalSummary();
-  renderSalaryPayments(); // ⭐ ADD THIS
-});
+    data.salaryPayments.push({
+      date: new Date().toISOString().split("T")[0],
+      amount: remaining
+    });
 
+    saveJSON(STORAGE_KEYS.months, months);
 
-payFullBtn.addEventListener("click", () => {
-  const goal = settings.salaryGoal || 0;
-  const { data } = getCurrentMonth();
+    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
+    setTimeout(() => (statusEl.textContent = ""), 2500);
 
-  const remaining = goal - (data.salaryPaid || 0);
-  if (remaining <= 0) {
-    statusEl.textContent = "Salary goal already met.";
-    return;
-  }
-
-  data.salaryPaid += remaining;
-
-  // ⭐ RECORD PAYMENT
-  data.salaryPayments.push({
-    date: new Date().toISOString().split("T")[0],
-    amount: remaining
+    recomputeGlobalSummary();
+    renderSalaryPayments();
   });
-
-  saveJSON(STORAGE_KEYS.months, months);
-
-  statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
-  setTimeout(() => statusEl.textContent = "", 2500);
-
-  recomputeGlobalSummary();
-  renderSalaryPayments(); // ⭐ UPDATE TABLE
-});
-
+}
 
 function updateSalaryProgressBar() {
   const { data } = getCurrentMonth();
@@ -383,7 +384,7 @@ function initPurchases() {
     saveJSON(STORAGE_KEYS.months, months);
 
     statusEl.textContent = "Purchase added.";
-    setTimeout(() => statusEl.textContent = "", 2500);
+    setTimeout(() => (statusEl.textContent = ""), 2500);
 
     descEl.value = "";
     amountEl.value = "";
@@ -427,7 +428,7 @@ function initManualSaleEntry() {
     saveJSON(STORAGE_KEYS.sales, sales);
 
     statusEl.textContent = "Manual sale added.";
-    setTimeout(() => statusEl.textContent = "", 2500);
+    setTimeout(() => (statusEl.textContent = ""), 2500);
 
     titleEl.value = "";
     saleEl.value = "";
@@ -467,7 +468,7 @@ function initCsvImport() {
       saveJSON(STORAGE_KEYS.sales, sales);
 
       statusEl.textContent = `Loaded ${rows.length} sales.`;
-      setTimeout(() => statusEl.textContent = "", 2500);
+      setTimeout(() => (statusEl.textContent = ""), 2500);
 
       recomputeGlobalSummary();
       renderSalesTable();
@@ -491,7 +492,7 @@ function initClearData() {
     saveJSON(STORAGE_KEYS.sales, sales);
 
     statusEl.textContent = "All sales cleared.";
-    setTimeout(() => statusEl.textContent = "", 2500);
+    setTimeout(() => (statusEl.textContent = ""), 2500);
 
     recomputeGlobalSummary();
     renderSalesTable();
@@ -517,9 +518,8 @@ function initCloseMonth() {
     saveJSON(STORAGE_KEYS.months, months);
 
     statusEl.textContent = `Month ${id} closed.`;
-    setTimeout(() => statusEl.textContent = "", 2500);
+    setTimeout(() => (statusEl.textContent = ""), 2500);
 
-    // Create next month
     let [year, month] = id.split("-").map(Number);
     month++;
     if (month > 12) {
@@ -535,7 +535,9 @@ function initCloseMonth() {
     recomputeGlobalSummary();
     renderPurchaseTable();
 
-    document.getElementById("monthArchiveSection").scrollIntoView({ behavior: "smooth" });
+    document
+      .getElementById("monthArchiveSection")
+      .scrollIntoView({ behavior: "smooth" });
   });
 }
 
@@ -556,8 +558,7 @@ function init() {
   renderSalesTable();
   renderPurchaseTable();
   renderMonthArchive();
-  renderSalaryPayments();   // ⭐ STEP 6 — THIS IS WHERE IT GOES
+  renderSalaryPayments();
 }
-
 
 document.addEventListener("DOMContentLoaded", init);
