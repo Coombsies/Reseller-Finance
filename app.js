@@ -271,40 +271,66 @@ function initSettingsUI() {
 // CSV IMPORT
 // ------------------------------
 function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  if (lines.length < 2) return [];
-
-  const header = lines[0].split(",");
-  const idxTitle = header.findIndex(h => /listing title/i.test(h));
-  const idxQty = header.findIndex(h => /quantity sold/i.test(h));
-  const idxTotalSales = header.findIndex(h => /total sales/i.test(h));
-  const idxTotalCosts = header.findIndex(h => /total selling costs/i.test(h));
-  const idxCogs = header.findIndex(h => /cogs/i.test(h));
-
   const rows = [];
+  let current = "";
+  let insideQuotes = false;
+  let row = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",");
-    if (cols.length < 3) continue;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
 
-    const title = idxTitle >= 0 ? cols[idxTitle] : "";
-    const qty = idxQty >= 0 ? Number(cols[idxQty] || 1) : 1;
-    const totalSales = idxTotalSales >= 0 ? cols[idxTotalSales] : "0";
-    const totalCosts = idxTotalCosts >= 0 ? cols[idxTotalCosts] : "0";
-    const cogs = idxCogs >= 0 ? cols[idxCogs] : "0";
-
-    rows.push({
-      title,
-      qty,
-      totalSales,
-      totalCosts,
-      cogs,
-      monthId: getCurrentMonthId()
-    });
+    if (char === '"' && insideQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      row.push(current);
+      current = "";
+    } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+      if (current.length > 0 || row.length > 0) {
+        row.push(current);
+        rows.push(row);
+        row = [];
+        current = "";
+      }
+    } else {
+      current += char;
+    }
   }
 
-  return rows;
+  if (current.length > 0 || row.length > 0) {
+    row.push(current);
+    rows.push(row);
+  }
+
+  const header = rows.shift().map(h => h.trim().toLowerCase());
+
+  const idxTitle = header.findIndex(h => h.includes("listing title"));
+  const idxQty = header.findIndex(h => h.includes("quantity sold"));
+  const idxTotalSales = header.findIndex(h => h.includes("total sales"));
+  const idxTotalCosts = header.findIndex(h => h.includes("total selling costs"));
+  const idxCogs = header.findIndex(h => h.includes("cogs"));
+
+  const parsed = [];
+
+  rows.forEach(cols => {
+    if (!cols || cols.length < 3) return;
+
+    parsed.push({
+      title: idxTitle >= 0 ? cols[idxTitle] : "",
+      qty: idxQty >= 0 ? Number(cols[idxQty] || 1) : 1,
+      totalSales: idxTotalSales >= 0 ? cols[idxTotalSales] : "0",
+      totalCosts: idxTotalCosts >= 0 ? cols[idxTotalCosts] : "0",
+      cogs: idxCogs >= 0 ? cols[idxCogs] : "0",
+      monthId: getCurrentMonthId()
+    });
+  });
+
+  return parsed;
 }
+
 
 function initCsvImport() {
   const fileInput = document.getElementById("csvFileInput");
