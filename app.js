@@ -267,6 +267,21 @@ function renderMonthArchive() {
   });
 }
 
+function renderSalaryPayments() {
+  const { data } = getCurrentMonth();
+  const tbody = document.getElementById("salaryPaymentsBody");
+  tbody.innerHTML = "";
+
+  (data.salaryPayments || []).forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.date}</td>
+      <td>${formatCurrency(p.amount)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 // ------------------------------
 // SALARY SYSTEM
 // ------------------------------
