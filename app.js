@@ -198,6 +198,31 @@ function recomputeGlobalSummary() {
 }
 
 // ------------------------------
+// DELETE FUNCTIONS
+// ------------------------------
+function deleteSale(index) {
+  sales.splice(index, 1);
+  saveJSON(STORAGE_KEYS.sales, sales);
+  recomputeGlobalSummary();
+  renderSalesTable();
+}
+
+function deletePurchase(index) {
+  purchases.splice(index, 1);
+  saveJSON(STORAGE_KEYS.purchases, purchases);
+  recomputeGlobalSummary();
+  renderPurchaseTable();
+}
+
+function deleteSalaryPayment(index) {
+  const { data } = getCurrentMonth();
+  data.salaryPayments.splice(index, 1);
+  saveJSON(STORAGE_KEYS.months, months);
+  renderSalaryPayments();
+  recomputeGlobalSummary();
+}
+
+// ------------------------------
 // RENDER TABLES
 // ------------------------------
 function renderSalesTable() {
@@ -213,10 +238,9 @@ function renderSalesTable() {
       <td>${sale.qty}</td>
       <td>${formatCurrency(toNum(sale.totalSales))}</td>
       <td>${formatCurrency(toNum(sale.totalCosts))}</td>
-      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(
-        2
-      )}" data-index="${index}" class="cogs-input" /></td>
+      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(2)}" data-index="${index}" class="cogs-input" /></td>
       <td>${formatCurrency(profit)}</td>
+      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
 
     tbody.appendChild(tr);
@@ -231,22 +255,31 @@ function renderSalesTable() {
       renderSalesTable();
     });
   });
+
+  tbody.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", e => deleteSale(Number(e.target.dataset.index)));
+  });
 }
 
 function renderPurchaseTable() {
   const tbody = document.getElementById("purchaseTableBody");
   tbody.innerHTML = "";
 
-  const { id, data } = getCurrentMonth();
+  const { id } = getCurrentMonth();
   const monthPurchases = purchases.filter(p => p.monthId === id);
 
-  monthPurchases.forEach(p => {
+  monthPurchases.forEach((p, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${p.desc}</td>
       <td>${formatCurrency(toNum(p.amount))}</td>
+      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", e => deletePurchase(Number(e.target.dataset.index)));
   });
 }
 
@@ -276,13 +309,18 @@ function renderSalaryPayments() {
   const tbody = document.getElementById("salaryPaymentsBody");
   tbody.innerHTML = "";
 
-  (data.salaryPayments || []).forEach(p => {
+  (data.salaryPayments || []).forEach((p, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${p.date}</td>
       <td>${formatCurrency(p.amount)}</td>
+      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", e => deleteSalaryPayment(Number(e.target.dataset.index)));
   });
 }
 
@@ -521,44 +559,3 @@ function initCloseMonth() {
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     let [year, month] = id.split("-").map(Number);
-    month++;
-    if (month > 12) {
-      month = 1;
-      year++;
-    }
-
-    const nextId = `${year}-${String(month).padStart(2, "0")}`;
-    ensureMonthExists(nextId);
-
-    document.getElementById("currentMonthName").textContent = nextId;
-
-    recomputeGlobalSummary();
-    renderPurchaseTable();
-
-    document
-      .getElementById("monthArchiveSection")
-      .scrollIntoView({ behavior: "smooth" });
-  });
-}
-
-// ------------------------------
-// INIT
-// ------------------------------
-function init() {
-  getCurrentMonth();
-
-  initCsvImport();
-  initManualSaleEntry();
-  initPurchases();
-  initClearData();
-  initCloseMonth();
-  initSalaryPayments();
-
-  recomputeGlobalSummary();
-  renderSalesTable();
-  renderPurchaseTable();
-  renderMonthArchive();
-  renderSalaryPayments();
-}
-
-document.addEventListener("DOMContentLoaded", init);
