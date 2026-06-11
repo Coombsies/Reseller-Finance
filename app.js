@@ -540,6 +540,8 @@ function init() {
   initPurchases();
   initClearData();
   initCloseMonth();
+  initSalaryPayments();
+
 
   // Initial renders
   recomputeGlobalSummary();
@@ -549,3 +551,52 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+function initSalaryPayments() {
+  const payInput = document.getElementById("salaryPayInput");
+  const payBtn = document.getElementById("paySalaryBtn");
+  const payFullBtn = document.getElementById("payFullSalaryBtn");
+  const statusEl = document.getElementById("salaryStatus");
+
+  payBtn.addEventListener("click", () => {
+    const amount = toNum(payInput.value);
+    if (amount <= 0) {
+      statusEl.textContent = "Enter a valid salary amount.";
+      return;
+    }
+
+    const { id, data } = getCurrentMonth();
+
+    data.salaryPaid = (data.salaryPaid || 0) + amount;
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
+    setTimeout(() => (statusEl.textContent = ""), 2500);
+
+    payInput.value = "";
+    recomputeGlobalSummary();
+  });
+
+  payFullBtn.addEventListener("click", () => {
+    const goal = settings.salaryGoal || 0;
+    if (goal <= 0) {
+      statusEl.textContent = "Set a salary goal first.";
+      return;
+    }
+
+    const { id, data } = getCurrentMonth();
+
+    const remaining = goal - (data.salaryPaid || 0);
+    if (remaining <= 0) {
+      statusEl.textContent = "Salary goal already met.";
+      return;
+    }
+
+    data.salaryPaid += remaining;
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
+    setTimeout(() => (statusEl.textContent = ""), 2500);
+
+    recomputeGlobalSummary();
+  });
+}
