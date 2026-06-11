@@ -14,6 +14,7 @@
   </header>
 
   <main class="app-main">
+
     <!-- CSV IMPORT -->
     <section class="card">
       <h2>Import eBay Sales CSV</h2>
@@ -36,7 +37,7 @@
       <p id="uploadStatus" class="status"></p>
     </section>
 
-    <!-- SUMMARY (GLOBAL SALES) -->
+    <!-- SUMMARY -->
     <section class="summary-grid">
       <div class="summary-card"><h3>Total Revenue</h3><p id="totalRevenue">$0.00</p></div>
       <div class="summary-card"><h3>Total COGS</h3><p id="totalCogs">$0.00</p></div>
@@ -53,23 +54,33 @@
         <p><strong>Current Month:</strong> <span id="currentMonthName"></span></p>
       </div>
 
+      <!-- SALARY GOAL -->
       <div class="form-grid">
         <label>Salary Goal (per month)
           <input type="number" id="salaryGoalInput" step="0.01" />
         </label>
         <button id="updateSalaryGoalBtn" type="button">Update Salary Goal</button>
       </div>
-<!-- PAY SALARY CONTROLS -->
-<div class="form-grid">
-  <label>Pay Salary Amount
-    <input type="number" id="salaryPayInput" step="0.01" />
-  </label>
-  <button id="paySalaryBtn" type="button">Pay Salary</button>
-</div>
 
-<button id="payFullSalaryBtn" type="button">Pay Full Salary Goal</button>
-<p id="salaryStatus" class="status"></p>
+      <!-- PAY SALARY -->
+      <div class="form-grid">
+        <label>Pay Salary Amount
+          <input type="number" id="salaryPayInput" step="0.01" />
+        </label>
+        <button id="paySalaryBtn" type="button">Pay Salary</button>
+      </div>
 
+      <button id="payFullSalaryBtn" type="button">Pay Full Salary Goal</button>
+      <p id="salaryStatus" class="status"></p>
+
+      <!-- SALARY PROGRESS BAR -->
+      <div class="progress-container">
+        <div id="salaryProgressBar" class="progress-bar"></div>
+      </div>
+
+      <p class="hint">Remaining profit is split 75% inventory / 25% savings</p>
+
+      <!-- MONTHLY NUMBERS -->
       <div class="summary-grid">
         <div class="summary-card">
           <h3>Month Profit (from sales)</h3>
@@ -80,7 +91,7 @@
           <p id="salaryPaid">$0.00</p>
         </div>
         <div class="summary-card">
-          <h3>Remaining Profit After Salary</h3>
+          <h3>Remaining Profit</h3>
           <p id="remainingProfit">$0.00</p>
         </div>
         <div class="summary-card">
@@ -101,7 +112,8 @@
         </div>
       </div>
 
-      <h3>Add Inventory Purchase (uses inventory budget)</h3>
+      <!-- PURCHASES -->
+      <h3>Add Inventory Purchase</h3>
       <div class="form-grid">
         <label>Purchase Description
           <input type="text" id="purchaseDesc" />
@@ -125,6 +137,9 @@
         </table>
       </div>
 
+      <hr class="section-divider">
+
+      <!-- CLOSE MONTH -->
       <div class="table-actions">
         <button id="closeMonthBtn" type="button">Close Month & Create Next</button>
         <p id="monthStatus" class="status"></p>
@@ -204,6 +219,7 @@
     </section>
 
   </main>
+
   <footer class="app-footer">
     <p>Data is stored locally in your browser.</p>
   </footer>
