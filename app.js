@@ -1,5 +1,5 @@
 // ------------------------------
-// LOCAL STORAGE DATA MODEL
+// LOCAL STORAGE KEYS
 // ------------------------------
 const STORAGE_KEYS = {
   sales: "rf_sales",
@@ -8,11 +8,13 @@ const STORAGE_KEYS = {
   months: "rf_months"
 };
 
+// ------------------------------
+// HELPERS
+// ------------------------------
 function loadJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw);
+    return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
   }
@@ -22,9 +24,6 @@ function saveJSON(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ------------------------------
-// HELPERS
-// ------------------------------
 function toNum(v) {
   return Number(String(v || "0").replace(/[^0-9.-]/g, ""));
 }
@@ -35,41 +34,29 @@ function formatCurrency(n) {
 
 function getCurrentMonthId() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 // ------------------------------
-// INITIAL DATA LOAD
+// LOAD DATA
 // ------------------------------
-let sales = loadJSON(STORAGE_KEYS.sales, []);          // array of sale objects
-let purchases = loadJSON(STORAGE_KEYS.purchases, []);  // array of purchase objects
-let settings = loadJSON(STORAGE_KEYS.settings, {
-  salaryGoal: 0
-});
-let months = loadJSON(STORAGE_KEYS.months, {});        // { "YYYY-MM": { ... } }
+let sales = loadJSON(STORAGE_KEYS.sales, []);
+let purchases = loadJSON(STORAGE_KEYS.purchases, []);
+let settings = loadJSON(STORAGE_KEYS.settings, { salaryGoal: 0 });
+let months = loadJSON(STORAGE_KEYS.months, {});
 
 // ------------------------------
 // MONTH LOGIC
 // ------------------------------
 function ensureMonthExists(monthId) {
   if (!months[monthId]) {
-    const now = new Date();
-    const [year, monthStr] = monthId.split("-");
-    const yearNum = Number(year);
-    const monthNum = Number(monthStr);
-
-    const grace = new Date(yearNum, monthNum, 1, 23, 59, 59);
-
     months[monthId] = {
       profit: 0,
       salaryPaid: 0,
       inventoryBudget: 0,
       inventorySpent: 0,
       businessSavings: 0,
-      isLocked: false,
-      gracePeriodEnds: grace.toISOString()
+      isLocked: false
     };
     saveJSON(STORAGE_KEYS.months, months);
   }
@@ -77,198 +64,13 @@ function ensureMonthExists(monthId) {
 
 function getCurrentMonth() {
   const id = getCurrentMonthId();
-  document.getElementById("currentMonthName").textContent = id;
   ensureMonthExists(id);
+  document.getElementById("currentMonthName").textContent = id;
   return { id, data: months[id] };
 }
 
 // ------------------------------
-// SALES CALCULATIONS
-// ------------------------------
-function computeSaleProfit(sale) {
-  const totalSales = toNum(sale.totalSales);
-  const totalCosts = toNum(sale.totalCosts);
-  const cogs = toNum(sale.cogs);
-  return totalSales - totalCosts - cogs;
-}
-
-function recomputeGlobalSummary() {
-  let totalRevenue = 0;
-  let totalCogs = 0;
-  let totalProfit = 0;
-  let totalQty = 0;
-
-  sales.forEach(sale => {
-    const qty = Number(sale.qty || 1);
-    const revenue = toNum(sale.totalSales);
-    const cogs = toNum(sale.cogs);
-    const costs = toNum(sale.totalCosts);
-    const profit = revenue - costs - cogs;
-
-    totalRevenue += revenue;
-    totalCogs += cogs;
-    totalProfit += profit;
-    totalQty += qty;
-  });
-
-  const avgSalePrice = totalQty > 0 ? totalRevenue / totalQty : 0;
-  const sellThroughRate = totalQty > 0 ? "100%" : "N/A"; // local-only, no inventory base
-
-  document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
-  document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
-  document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
-  document.getElementById("avgSalePrice").textContent = formatCurrency(avgSalePrice);
-  document.getElementById("sellThroughRate").textContent = sellThroughRate;
-
-  // Update current month profit from all sales in this month
-  const { id, data } = getCurrentMonth();
-  const monthSales = sales.filter(s => s.monthId === id);
-  let monthProfit = 0;
-  monthSales.forEach(s => {
-    monthProfit += computeSaleProfit(s);
-  });
-
-  data.profit = monthProfit;
-
-  // 75/25 split after salary
-  const salaryPaid = data.salaryPaid || 0;
-  const remainingProfit = monthProfit - salaryPaid;
-  const inventoryBudget = remainingProfit * 0.75;
-  const businessSavings = remainingProfit * 0.25;
-
-  data.inventoryBudget = inventoryBudget;
-  data.businessSavings = businessSavings;
-
-  saveJSON(STORAGE_KEYS.months, months);
-
-  document.getElementById("monthProfit").textContent = formatCurrency(monthProfit);
-  document.getElementById("salaryPaid").textContent = formatCurrency(salaryPaid);
-  document.getElementById("remainingProfit").textContent = formatCurrency(remainingProfit);
-  document.getElementById("inventoryBudget").textContent = formatCurrency(inventoryBudget);
-  document.getElementById("inventorySpent").textContent = formatCurrency(data.inventorySpent || 0);
-  document.getElementById("inventoryRemaining").textContent =
-    formatCurrency((data.inventoryBudget || 0) - (data.inventorySpent || 0));
-  document.getElementById("businessSavings").textContent = formatCurrency(data.businessSavings || 0);
-
-  renderMonthArchive();
-}
-
-// ------------------------------
-// RENDER SALES TABLE
-// ------------------------------
-function renderSalesTable() {
-  const tbody = document.getElementById("salesTableBody");
-  tbody.innerHTML = "";
-
-  sales.forEach((sale, index) => {
-    const tr = document.createElement("tr");
-
-    const profit = computeSaleProfit(sale);
-
-    tr.innerHTML = `
-      <td>${sale.title || ""}</td>
-      <td>${sale.qty || 1}</td>
-      <td>${formatCurrency(toNum(sale.totalSales))}</td>
-      <td>${formatCurrency(toNum(sale.totalCosts))}</td>
-      <td>
-        <input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(2)}" data-index="${index}" class="cogs-input" />
-      </td>
-      <td>${formatCurrency(profit)}</td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-
-  // Attach COGS change handlers
-  tbody.querySelectorAll(".cogs-input").forEach(input => {
-    input.addEventListener("change", e => {
-      const idx = Number(e.target.dataset.index);
-      const val = toNum(e.target.value);
-      sales[idx].cogs = val;
-      saveJSON(STORAGE_KEYS.sales, sales);
-      recomputeGlobalSummary();
-      renderSalesTable();
-    });
-  });
-}
-
-// ------------------------------
-// RENDER PURCHASE TABLE
-// ------------------------------
-function renderPurchaseTable() {
-  const tbody = document.getElementById("purchaseTableBody");
-  tbody.innerHTML = "";
-
-  const { id, data } = getCurrentMonth();
-
-  const monthPurchases = purchases.filter(p => p.monthId === id);
-
-  monthPurchases.forEach(p => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${p.desc || ""}</td>
-      <td>${formatCurrency(toNum(p.amount))}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  document.getElementById("inventorySpent").textContent =
-    formatCurrency(data.inventorySpent || 0);
-  document.getElementById("inventoryRemaining").textContent =
-    formatCurrency((data.inventoryBudget || 0) - (data.inventorySpent || 0));
-}
-
-// ------------------------------
-// MONTH ARCHIVE RENDER
-// ------------------------------
-function renderMonthArchive() {
-  const tbody = document.getElementById("monthArchiveBody");
-  tbody.innerHTML = "";
-
-  const monthIds = Object.keys(months).sort(); // chronological
-
-  monthIds.forEach(id => {
-    const m = months[id];
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${id}</td>
-      <td>${formatCurrency(m.profit || 0)}</td>
-      <td>${formatCurrency(m.salaryPaid || 0)}</td>
-      <td>${formatCurrency(m.inventoryBudget || 0)}</td>
-      <td>${formatCurrency(m.inventorySpent || 0)}</td>
-      <td>${formatCurrency(m.businessSavings || 0)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-// ------------------------------
-// SETTINGS (SALARY GOAL)
-// ------------------------------
-function initSettingsUI() {
-  document.getElementById("salaryGoalInput").value =
-    settings.salaryGoal ? settings.salaryGoal : "";
-
-  document.getElementById("updateSalaryGoalBtn").addEventListener("click", () => {
-    const val = toNum(document.getElementById("salaryGoalInput").value);
-    settings.salaryGoal = val;
-    saveJSON(STORAGE_KEYS.settings, settings);
-
-    const { id, data } = getCurrentMonth();
-    // When salary goal is updated, we don't auto-pay salary.
-    // You can later add a "Pay Salary" button if you want.
-    document.getElementById("monthStatus").textContent =
-      `Salary goal updated to ${formatCurrency(val)}.`;
-    setTimeout(() => {
-      document.getElementById("monthStatus").textContent = "";
-    }, 2500);
-
-    recomputeGlobalSummary();
-  });
-}
-
-// ------------------------------
-// CSV IMPORT
+// CSV PARSER (SAFE FOR COMMAS)
 // ------------------------------
 function parseCsv(text) {
   const rows = [];
@@ -331,44 +133,235 @@ function parseCsv(text) {
   return parsed;
 }
 
+// ------------------------------
+// GLOBAL SUMMARY
+// ------------------------------
+function computeSaleProfit(sale) {
+  return toNum(sale.totalSales) - toNum(sale.totalCosts) - toNum(sale.cogs);
+}
 
-function initCsvImport() {
-  const fileInput = document.getElementById("csvFileInput");
-  const loadBtn = document.getElementById("loadCsvBtn");
-  const statusEl = document.getElementById("uploadStatus");
+function recomputeGlobalSummary() {
+  let totalRevenue = 0;
+  let totalCogs = 0;
+  let totalProfit = 0;
+  let totalQty = 0;
 
-  loadBtn.addEventListener("click", () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) {
-      statusEl.textContent = "No file selected.";
-      return;
-    }
+  sales.forEach(sale => {
+    const qty = Number(sale.qty || 1);
+    const revenue = toNum(sale.totalSales);
+    const cogs = toNum(sale.cogs);
+    const costs = toNum(sale.totalCosts);
+    const profit = revenue - costs - cogs;
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target.result;
-      const rows = parseCsv(text);
+    totalRevenue += revenue;
+    totalCogs += cogs;
+    totalProfit += profit;
+    totalQty += qty;
+  });
 
-      if (rows.length === 0) {
-        statusEl.textContent = "No valid rows found in CSV.";
-        return;
-      }
+  document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
+  document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
+  document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
+  document.getElementById("avgSalePrice").textContent =
+    totalQty > 0 ? formatCurrency(totalRevenue / totalQty) : "$0.00";
+  document.getElementById("sellThroughRate").textContent =
+    totalQty > 0 ? "100%" : "N/A";
 
-      sales = sales.concat(rows);
+  const { id, data } = getCurrentMonth();
+  const monthSales = sales.filter(s => s.monthId === id);
+
+  let monthProfit = 0;
+  monthSales.forEach(s => monthProfit += computeSaleProfit(s));
+
+  data.profit = monthProfit;
+
+  const salaryPaid = data.salaryPaid || 0;
+  const remainingProfit = monthProfit - salaryPaid;
+
+  data.inventoryBudget = remainingProfit * 0.75;
+  data.businessSavings = remainingProfit * 0.25;
+
+  saveJSON(STORAGE_KEYS.months, months);
+
+  document.getElementById("monthProfit").textContent = formatCurrency(monthProfit);
+  document.getElementById("salaryPaid").textContent = formatCurrency(salaryPaid);
+  document.getElementById("remainingProfit").textContent = formatCurrency(remainingProfit);
+  document.getElementById("inventoryBudget").textContent = formatCurrency(data.inventoryBudget);
+  document.getElementById("inventorySpent").textContent = formatCurrency(data.inventorySpent || 0);
+  document.getElementById("inventoryRemaining").textContent =
+    formatCurrency((data.inventoryBudget || 0) - (data.inventorySpent || 0));
+  document.getElementById("businessSavings").textContent = formatCurrency(data.businessSavings);
+
+  updateSalaryProgressBar();
+  renderMonthArchive();
+}
+
+// ------------------------------
+// RENDER TABLES
+// ------------------------------
+function renderSalesTable() {
+  const tbody = document.getElementById("salesTableBody");
+  tbody.innerHTML = "";
+
+  sales.forEach((sale, index) => {
+    const tr = document.createElement("tr");
+    const profit = computeSaleProfit(sale);
+
+    tr.innerHTML = `
+      <td>${sale.title}</td>
+      <td>${sale.qty}</td>
+      <td>${formatCurrency(toNum(sale.totalSales))}</td>
+      <td>${formatCurrency(toNum(sale.totalCosts))}</td>
+      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(2)}" data-index="${index}" class="cogs-input" /></td>
+      <td>${formatCurrency(profit)}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll(".cogs-input").forEach(input => {
+    input.addEventListener("change", e => {
+      const idx = Number(e.target.dataset.index);
+      sales[idx].cogs = toNum(e.target.value);
       saveJSON(STORAGE_KEYS.sales, sales);
-
-      statusEl.textContent = `Loaded ${rows.length} sales from CSV.`;
-      setTimeout(() => (statusEl.textContent = ""), 2500);
-
       recomputeGlobalSummary();
       renderSalesTable();
-    };
-    reader.readAsText(file);
+    });
+  });
+}
+
+function renderPurchaseTable() {
+  const tbody = document.getElementById("purchaseTableBody");
+  tbody.innerHTML = "";
+
+  const { id, data } = getCurrentMonth();
+  const monthPurchases = purchases.filter(p => p.monthId === id);
+
+  monthPurchases.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.desc}</td>
+      <td>${formatCurrency(toNum(p.amount))}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderMonthArchive() {
+  const tbody = document.getElementById("monthArchiveBody");
+  tbody.innerHTML = "";
+
+  Object.keys(months).sort().forEach(id => {
+    const m = months[id];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${id}</td>
+      <td>${formatCurrency(m.profit)}</td>
+      <td>${formatCurrency(m.salaryPaid)}</td>
+      <td>${formatCurrency(m.inventoryBudget)}</td>
+      <td>${formatCurrency(m.inventorySpent)}</td>
+      <td>${formatCurrency(m.businessSavings)}</td>
+    `;
+    tbody.appendChild(tr);
   });
 }
 
 // ------------------------------
-// MANUAL SALE ENTRY
+// SALARY SYSTEM
+// ------------------------------
+function initSalaryPayments() {
+  const payInput = document.getElementById("salaryPayInput");
+  const payBtn = document.getElementById("paySalaryBtn");
+  const payFullBtn = document.getElementById("payFullSalaryBtn");
+  const statusEl = document.getElementById("salaryStatus");
+
+  payBtn.addEventListener("click", () => {
+    const amount = toNum(payInput.value);
+    if (amount <= 0) {
+      statusEl.textContent = "Enter a valid salary amount.";
+      return;
+    }
+
+    const { data } = getCurrentMonth();
+    data.salaryPaid = (data.salaryPaid || 0) + amount;
+
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
+    setTimeout(() => statusEl.textContent = "", 2500);
+
+    payInput.value = "";
+    recomputeGlobalSummary();
+  });
+
+  payFullBtn.addEventListener("click", () => {
+    const goal = settings.salaryGoal || 0;
+    const { data } = getCurrentMonth();
+
+    const remaining = goal - (data.salaryPaid || 0);
+    if (remaining <= 0) {
+      statusEl.textContent = "Salary goal already met.";
+      return;
+    }
+
+    data.salaryPaid += remaining;
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
+    setTimeout(() => statusEl.textContent = "", 2500);
+
+    recomputeGlobalSummary();
+  });
+}
+
+function updateSalaryProgressBar() {
+  const { data } = getCurrentMonth();
+  const goal = settings.salaryGoal || 0;
+  const paid = data.salaryPaid || 0;
+
+  const pct = goal > 0 ? Math.min((paid / goal) * 100, 100) : 0;
+  document.getElementById("salaryProgressBar").style.width = pct + "%";
+}
+
+// ------------------------------
+// PURCHASES
+// ------------------------------
+function initPurchases() {
+  const descEl = document.getElementById("purchaseDesc");
+  const amountEl = document.getElementById("purchaseAmount");
+  const btn = document.getElementById("addPurchaseBtn");
+  const statusEl = document.getElementById("purchaseStatus");
+
+  btn.addEventListener("click", () => {
+    const desc = descEl.value.trim();
+    const amount = toNum(amountEl.value);
+
+    if (!desc || amount <= 0) {
+      statusEl.textContent = "Enter a description and amount.";
+      return;
+    }
+
+    const { id, data } = getCurrentMonth();
+
+    purchases.push({ desc, amount, monthId: id });
+    data.inventorySpent = (data.inventorySpent || 0) + amount;
+
+    saveJSON(STORAGE_KEYS.purchases, purchases);
+    saveJSON(STORAGE_KEYS.months, months);
+
+    statusEl.textContent = "Purchase added.";
+    setTimeout(() => statusEl.textContent = "", 2500);
+
+    descEl.value = "";
+    amountEl.value = "";
+
+    renderPurchaseTable();
+    recomputeGlobalSummary();
+  });
+}
+
+// ------------------------------
+// MANUAL SALES
 // ------------------------------
 function initManualSaleEntry() {
   const titleEl = document.getElementById("manualTitle");
@@ -401,7 +394,7 @@ function initManualSaleEntry() {
     saveJSON(STORAGE_KEYS.sales, sales);
 
     statusEl.textContent = "Manual sale added.";
-    setTimeout(() => (statusEl.textContent = ""), 2500);
+    setTimeout(() => statusEl.textContent = "", 2500);
 
     titleEl.value = "";
     saleEl.value = "";
@@ -414,61 +407,58 @@ function initManualSaleEntry() {
 }
 
 // ------------------------------
-// PURCHASE ENTRY
+// CSV IMPORT
 // ------------------------------
-function initPurchases() {
-  const descEl = document.getElementById("purchaseDesc");
-  const amountEl = document.getElementById("purchaseAmount");
-  const btn = document.getElementById("addPurchaseBtn");
-  const statusEl = document.getElementById("purchaseStatus");
+function initCsvImport() {
+  const fileInput = document.getElementById("csvFileInput");
+  const loadBtn = document.getElementById("loadCsvBtn");
+  const statusEl = document.getElementById("uploadStatus");
 
-  btn.addEventListener("click", () => {
-    const desc = descEl.value.trim();
-    const amount = toNum(amountEl.value);
-
-    if (!desc || amount <= 0) {
-      statusEl.textContent = "Enter a description and amount.";
+  loadBtn.addEventListener("click", () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      statusEl.textContent = "No file selected.";
       return;
     }
 
-    const { id, data } = getCurrentMonth();
+    const reader = new FileReader();
+    reader.onload = e => {
+      const rows = parseCsv(e.target.result);
 
-    purchases.push({
-      desc,
-      amount,
-      monthId: id
-    });
+      if (rows.length === 0) {
+        statusEl.textContent = "No valid rows found.";
+        return;
+      }
 
-    data.inventorySpent = (data.inventorySpent || 0) + amount;
-    saveJSON(STORAGE_KEYS.purchases, purchases);
-    saveJSON(STORAGE_KEYS.months, months);
+      sales = sales.concat(rows);
+      saveJSON(STORAGE_KEYS.sales, sales);
 
-    statusEl.textContent = "Purchase added.";
-    setTimeout(() => (statusEl.textContent = ""), 2500);
+      statusEl.textContent = `Loaded ${rows.length} sales.`;
+      setTimeout(() => statusEl.textContent = "", 2500);
 
-    descEl.value = "";
-    amountEl.value = "";
+      recomputeGlobalSummary();
+      renderSalesTable();
+    };
 
-    renderPurchaseTable();
-    recomputeGlobalSummary();
+    reader.readAsText(file);
   });
 }
 
 // ------------------------------
-// CLEAR ALL SALES DATA
+// CLEAR SALES
 // ------------------------------
 function initClearData() {
   const btn = document.getElementById("clearDataBtn");
   const statusEl = document.getElementById("clearStatus");
 
   btn.addEventListener("click", () => {
-    if (!confirm("Clear ALL sales data? This cannot be undone.")) return;
+    if (!confirm("Clear ALL sales data?")) return;
 
     sales = [];
     saveJSON(STORAGE_KEYS.sales, sales);
 
-    statusEl.textContent = "All sales data cleared.";
-    setTimeout(() => (statusEl.textContent = ""), 2500);
+    statusEl.textContent = "All sales cleared.";
+    setTimeout(() => statusEl.textContent = "", 2500);
 
     recomputeGlobalSummary();
     renderSalesTable();
@@ -476,7 +466,7 @@ function initClearData() {
 }
 
 // ------------------------------
-// CLOSE MONTH & CREATE NEXT
+// CLOSE MONTH
 // ------------------------------
 function initCloseMonth() {
   const btn = document.getElementById("closeMonthBtn");
@@ -486,43 +476,33 @@ function initCloseMonth() {
     const { id, data } = getCurrentMonth();
 
     if (data.isLocked) {
-      statusEl.textContent = "This month is already closed.";
-      setTimeout(() => (statusEl.textContent = ""), 2500);
+      statusEl.textContent = "Month already closed.";
       return;
     }
 
     data.isLocked = true;
     saveJSON(STORAGE_KEYS.months, months);
 
-    statusEl.textContent = `Month ${id} closed. New month created.`;
-    setTimeout(() => (statusEl.textContent = ""), 2500);
+    statusEl.textContent = `Month ${id} closed.`;
+    setTimeout(() => statusEl.textContent = "", 2500);
 
     // Create next month
-    const [yearStr, monthStr] = id.split("-");
-    let year = Number(yearStr);
-    let month = Number(monthStr);
-
-    month += 1;
+    let [year, month] = id.split("-").map(Number);
+    month++;
     if (month > 12) {
       month = 1;
-      year += 1;
+      year++;
     }
 
     const nextId = `${year}-${String(month).padStart(2, "0")}`;
     ensureMonthExists(nextId);
 
-    // Switch UI to new month
     document.getElementById("currentMonthName").textContent = nextId;
 
-    // Recompute summary for new month
     recomputeGlobalSummary();
     renderPurchaseTable();
 
-    // Scroll to Month Archive section
-    const archiveSection = document.getElementById("monthArchiveSection");
-    if (archiveSection) {
-      archiveSection.scrollIntoView({ behavior: "smooth" });
-    }
+    document.getElementById("monthArchiveSection").scrollIntoView({ behavior: "smooth" });
   });
 }
 
@@ -530,11 +510,8 @@ function initCloseMonth() {
 // INIT
 // ------------------------------
 function init() {
-  // Ensure current month exists
   getCurrentMonth();
 
-  // Init UI pieces
-  initSettingsUI();
   initCsvImport();
   initManualSaleEntry();
   initPurchases();
@@ -542,8 +519,6 @@ function init() {
   initCloseMonth();
   initSalaryPayments();
 
-
-  // Initial renders
   recomputeGlobalSummary();
   renderSalesTable();
   renderPurchaseTable();
@@ -551,52 +526,3 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-function initSalaryPayments() {
-  const payInput = document.getElementById("salaryPayInput");
-  const payBtn = document.getElementById("paySalaryBtn");
-  const payFullBtn = document.getElementById("payFullSalaryBtn");
-  const statusEl = document.getElementById("salaryStatus");
-
-  payBtn.addEventListener("click", () => {
-    const amount = toNum(payInput.value);
-    if (amount <= 0) {
-      statusEl.textContent = "Enter a valid salary amount.";
-      return;
-    }
-
-    const { id, data } = getCurrentMonth();
-
-    data.salaryPaid = (data.salaryPaid || 0) + amount;
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    payInput.value = "";
-    recomputeGlobalSummary();
-  });
-
-  payFullBtn.addEventListener("click", () => {
-    const goal = settings.salaryGoal || 0;
-    if (goal <= 0) {
-      statusEl.textContent = "Set a salary goal first.";
-      return;
-    }
-
-    const { id, data } = getCurrentMonth();
-
-    const remaining = goal - (data.salaryPaid || 0);
-    if (remaining <= 0) {
-      statusEl.textContent = "Salary goal already met.";
-      return;
-    }
-
-    data.salaryPaid += remaining;
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    recomputeGlobalSummary();
-  });
-}
