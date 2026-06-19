@@ -365,14 +365,36 @@ data.salaryPayments.push({
   });
 
   payFullBtn.addEventListener("click", () => {
-    const goal = settings.salaryGoal || 0;
-    const { data } = getCurrentMonth();
+  const goal = settings.salaryGoal || 0;
+  const { data } = getCurrentMonth();
 
-    const remaining = goal - (data.salaryPaid || 0);
-    if (remaining <= 0) {
-      statusEl.textContent = "Salary goal already met.";
-      return;
-    }
+  const remaining = goal - (data.salaryPaid || 0);
+  if (remaining <= 0) {
+    statusEl.textContent = "Salary goal already met.";
+    return;
+  }
+
+  // Manual date support
+  const dateInput = document.getElementById("salaryDate").value;
+  const date = dateInput && dateInput.trim() !== ""
+    ? dateInput
+    : new Date().toISOString().split("T")[0];
+
+  data.salaryPaid = (data.salaryPaid || 0) + remaining;
+
+  data.salaryPayments.push({
+    date,
+    amount: remaining
+  });
+
+  saveJSON(STORAGE_KEYS.months, months);
+
+  statusEl.textContent = `Paid remaining ${formatCurrency(remaining)} salary.`;
+  setTimeout(() => (statusEl.textContent = ""), 2500);
+
+  recomputeGlobalSummary();
+  renderSalaryPayments();
+});
 
     data.salaryPaid += remaining;
 
