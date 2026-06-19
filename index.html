@@ -12,6 +12,8 @@
     th { background: #eee; }
     button { padding: 8px 12px; margin-top: 10px; cursor: pointer; }
     input { padding: 6px; margin: 4px 0; width: 100%; }
+    .row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .row .card { flex: 1; min-width: 260px; }
   </style>
 </head>
 
@@ -21,31 +23,34 @@
 <p>Month: <span id="currentMonthLabel"></span></p>
 <p>Last Updated: <span id="lastUpdated"></span></p>
 
-<!-- ============================
-     SUMMARY CARDS
-============================ -->
-<div class="card">
-  <h2>Summary</h2>
-  <p>Total Revenue: <span id="totalRevenue">$0.00</span></p>
-  <p>Total COGS: <span id="totalCogs">$0.00</span></p>
-  <p>Total Profit: <span id="totalProfit">$0.00</span></p>
-  <p>Inventory Spent: <span id="inventorySpent">$0.00</span></p>
-  <p>Salary Paid: <span id="salaryPaid">$0.00</span></p>
-  <p>Salary Goal: <span id="salaryGoalDisplay">$0.00</span></p>
+<div class="row">
+  <div class="card">
+    <h2>Summary</h2>
+    <p>Total Revenue: <span id="totalRevenue">$0.00</span></p>
+    <p>Total COGS: <span id="totalCogs">$0.00</span></p>
+    <p>Total Profit: <span id="totalProfit">$0.00</span></p>
+    <p>Inventory Spent: <span id="inventorySpent">$0.00</span></p>
+    <p>Salary Paid: <span id="salaryPaid">$0.00</span></p>
+    <p>Salary Goal: <span id="salaryGoalDisplay">$0.00</span></p>
+  </div>
+
+  <div class="card">
+    <h2>Month Archive Snapshot</h2>
+    <p>Archived Profit: <span id="archivedProfit">$0.00</span></p>
+    <p>Archived Salary Paid: <span id="archivedSalaryPaid">$0.00</span></p>
+    <p>Archived Inventory Budget: <span id="archivedInventoryBudget">$0.00</span></p>
+    <p>Archived Inventory Spent: <span id="archivedInventorySpent">$0.00</span></p>
+    <p>Archived Business Savings: <span id="archivedBusinessSavings">$0.00</span></p>
+  </div>
 </div>
 
-<!-- ============================
-     CSV IMPORT
-============================ -->
 <div class="card">
-  <h2>Import Sales CSV</h2>
+  <h2>Sales CSV</h2>
   <input type="file" id="csvFileInput" style="display:none" />
-  <button id="loadCsvBtn">Load CSV</button>
+  <button id="loadCsvBtn">Load Sales CSV</button>
+  <button id="downloadCsvBtn">Download Sales CSV</button>
 </div>
 
-<!-- ============================
-     ADD PURCHASE
-============================ -->
 <div class="card">
   <h2>Add Purchase</h2>
 
@@ -64,30 +69,28 @@
   <button id="addPurchaseBtn">Add Purchase</button>
 </div>
 
-<!-- ============================
-     SALARY
-============================ -->
 <div class="card">
   <h2>Salary</h2>
 
-  <label>Amount</label>
+  <label>Salary Goal (per month)</label>
+  <input id="salaryGoalInput" type="number" />
+
+  <button id="setSalaryGoalBtn">Set Salary Goal</button>
+
+  <hr />
+
+  <label>Pay Amount</label>
   <input id="salaryAmount" type="number" />
 
   <button id="paySalaryBtn">Pay Salary</button>
   <button id="payFullSalaryBtn">Pay Full Salary Goal</button>
 </div>
 
-<!-- ============================
-     CLOSE MONTH
-============================ -->
 <div class="card">
   <h2>Close Month</h2>
   <button id="closeMonthBtn">Close Current Month</button>
 </div>
 
-<!-- ============================
-     SALES TABLE
-============================ -->
 <div class="card">
   <h2>Sales</h2>
   <table>
@@ -106,9 +109,6 @@
   </table>
 </div>
 
-<!-- ============================
-     PURCHASES TABLE
-============================ -->
 <div class="card">
   <h2>Purchases</h2>
   <table>
@@ -125,9 +125,6 @@
   </table>
 </div>
 
-<!-- ============================
-     SALARY TABLE
-============================ -->
 <div class="card">
   <h2>Salary Payments</h2>
   <table>
