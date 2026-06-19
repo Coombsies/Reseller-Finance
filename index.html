@@ -3,161 +3,244 @@
 <head>
   <meta charset="UTF-8" />
   <title>Reseller Finance Dashboard</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
-    h1 { margin-bottom: 5px; }
-    .card { background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #eee; }
-    button { padding: 8px 12px; margin-top: 10px; cursor: pointer; }
-    input { padding: 6px; margin: 4px 0; width: 100%; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
+  <header class="app-header">
+    <h1>Reseller Finance Dashboard</h1>
+    <p>Track sales, costs, COGS, profit, salary, inventory budget, and business savings.</p>
+  </header>
 
-<h1>Reseller Finance Dashboard</h1>
-<p>Month: <span id="currentMonthLabel"></span></p>
-<p>Last Updated: <span id="lastUpdated"></span></p>
+  <main class="app-main">
 
-<div class="card">
-  <h2>Summary</h2>
-  <p>Total Revenue: <span id="totalRevenue">$0.00</span></p>
-  <p>Total COGS: <span id="totalCogs">$0.00</span></p>
-  <p>Total Profit: <span id="totalProfit">$0.00</span></p>
-  <p>Inventory Spent: <span id="inventorySpent">$0.00</span></p>
-  <p>Salary Paid: <span id="salaryPaid">$0.00</span></p>
-  <p>Salary Goal: <span id="salaryGoalDisplay">$0.00</span></p>
-</div>
+    <!-- CSV IMPORT -->
+    <section class="card">
+      <h2>Import eBay Sales CSV</h2>
+      <p>Select your CSV and click <strong>Load CSV</strong>.</p>
 
-<div class="card">
-  <h2>Sales CSV + Manual Entry</h2>
+      <div class="upload-row">
+        <label class="file-picker">
+          <span>Select CSV</span>
+          <input type="file" id="csvFileInput" accept=".csv" />
+        </label>
 
-  <input type="file" id="csvFileInput" style="display:none" />
-  <button id="loadCsvBtn">Load Sales CSV</button>
-  <button id="downloadCsvBtn">Download Sales CSV</button>
+        <button id="loadCsvBtn" type="button" class="csv-btn">Load CSV</button>
+      </div>
 
-  <hr />
+      <p class="hint">
+        Expected headers:<br>
+        <strong>Listing title, Quantity sold, Total sales (Includes taxes), Total selling costs, Cogs</strong>
+      </p>
 
-  <h3>Manual Sale</h3>
-  <label>Title</label>
-  <input id="saleTitle" type="text" />
+      <p id="uploadStatus" class="status"></p>
+    </section>
 
-  <label>Qty</label>
-  <input id="saleQty" type="number" />
+    <!-- SUMMARY -->
+    <section class="summary-grid">
+      <div class="summary-card"><h3>Total Revenue</h3><p id="totalRevenue">$0.00</p></div>
+      <div class="summary-card"><h3>Total COGS</h3><p id="totalCogs">$0.00</p></div>
+      <div class="summary-card"><h3>Total Profit</h3><p id="totalProfit">$0.00</p></div>
+      <div class="summary-card"><h3>Sell-Through Rate</h3><p id="sellThroughRate">N/A</p></div>
+      <div class="summary-card"><h3>Average Sale Price</h3><p id="avgSalePrice">$0.00</p></div>
+    </section>
 
-  <label>Total Sales</label>
-  <input id="saleTotalSales" type="number" />
+    <!-- MONTHLY SYSTEM -->
+    <section class="card">
+      <h2>Monthly Finance System</h2>
 
-  <label>Selling Costs</label>
-  <input id="saleSellingCosts" type="number" />
+      <div class="month-header">
+        <p><strong>Current Month:</strong> <span id="currentMonthName"></span></p>
+      </div>
 
-  <label>COGS</label>
-  <input id="saleCogs" type="number" />
+      <!-- SALARY GOAL -->
+      <div class="form-grid">
+        <label>Salary Goal (per month)
+          <input type="number" id="salaryGoalInput" step="0.01" />
+        </label>
+        <button id="updateSalaryGoalBtn" type="button">Update Salary Goal</button>
+      </div>
 
-  <label>Date</label>
-  <input id="saleDate" type="date" />
+      <!-- PAY SALARY -->
+      <div class="form-grid">
+        <label>Pay Salary Amount
+          <input type="number" id="salaryPayInput" step="0.01" />
+        </label>
+        <button id="paySalaryBtn" type="button">Pay Salary</button>
+      </div>
 
-  <button id="addSaleBtn">Add Sale</button>
-</div>
+      <button id="payFullSalaryBtn" type="button">Pay Full Salary Goal</button>
+      <p id="salaryStatus" class="status"></p>
 
-<div class="card">
-  <h2>Add Purchase</h2>
+      <!-- SALARY PROGRESS BAR -->
+      <div class="progress-container">
+        <div id="salaryProgressBar" class="progress-bar"></div>
+      </div>
 
-  <label>Description</label>
-  <input id="purchaseDesc" type="text" />
+      <p class="hint">Remaining profit is split 75% inventory / 25% savings</p>
 
-  <label>Total Amount</label>
-  <input id="purchaseAmount" type="number" />
+      <!-- SALARY PAYMENTS LOG -->
+      <h3>Salary Payments</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="salaryPaymentsBody"></tbody>
+        </table>
+      </div>
 
-  <label>Item Count</label>
-  <input id="purchaseItemCount" type="number" />
+      <!-- MONTHLY NUMBERS -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h3>Month Profit (from sales)</h3>
+          <p id="monthProfit">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Salary Paid</h3>
+          <p id="salaryPaid">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Remaining Profit</h3>
+          <p id="remainingProfit">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Inventory Budget (75%)</h3>
+          <p id="inventoryBudget">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Inventory Spent</h3>
+          <p id="inventorySpent">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Inventory Remaining</h3>
+          <p id="inventoryRemaining">$0.00</p>
+        </div>
+        <div class="summary-card">
+          <h3>Business Savings (25%)</h3>
+          <p id="businessSavings">$0.00</p>
+        </div>
+      </div>
 
-  <label>Date</label>
-  <input id="purchaseDate" type="date" />
+      <!-- PURCHASES -->
+      <h3>Add Inventory Purchase</h3>
+      <div class="form-grid">
+        <label>Purchase Description
+          <input type="text" id="purchaseDesc" />
+        </label>
+        <label>Purchase Amount
+          <input type="number" id="purchaseAmount" step="0.01" />
+        </label>
+      </div>
+      <button id="addPurchaseBtn" type="button">Add Purchase</button>
+      <p id="purchaseStatus" class="status"></p>
 
-  <button id="addPurchaseBtn">Add Purchase</button>
-</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Purchase</th>
+              <th>Amount</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="purchaseTableBody"></tbody>
+        </table>
+      </div>
 
-<div class="card">
-  <h2>Salary</h2>
+      <hr class="section-divider">
 
-  <label>Salary Goal (per month)</label>
-  <input id="salaryGoalInput" type="number" />
-  <button id="setSalaryGoalBtn">Set Salary Goal</button>
+      <!-- CLOSE MONTH -->
+      <div class="table-actions">
+        <button id="closeMonthBtn" type="button">Close Month & Create Next</button>
+        <p id="monthStatus" class="status"></p>
+      </div>
+    </section>
 
-  <hr />
+    <!-- MANUAL SALE ENTRY -->
+    <section class="card">
+      <h2>Add Sale Manually</h2>
 
-  <label>Pay Amount</label>
-  <input id="salaryAmount" type="number" />
+      <div class="form-grid">
+        <label>Title
+          <input type="text" id="manualTitle" />
+        </label>
 
-  <label>Payment Date</label>
-  <input id="salaryDate" type="date" />
+        <label>Total Sales
+          <input type="number" id="manualSale" step="0.01" />
+        </label>
 
-  <button id="paySalaryBtn">Pay Salary</button>
-  <button id="payFullSalaryBtn">Pay Full Salary Goal (Today)</button>
-</div>
+        <label>Total Selling Costs
+          <input type="number" id="manualCosts" step="0.01" />
+        </label>
 
-<div class="card">
-  <h2>Close Month</h2>
-  <button id="closeMonthBtn">Close Current Month</button>
+        <label>COGS
+          <input type="number" id="manualCogs" step="0.01" />
+        </label>
+      </div>
 
-  <h3>Archived Snapshot (Current Month)</h3>
-  <p>Archived Profit: <span id="archivedProfit">$0.00</span></p>
-  <p>Archived Salary Paid: <span id="archivedSalaryPaid">$0.00</span></p>
-  <p>Archived Inventory Budget: <span id="archivedInventoryBudget">$0.00</span></p>
-  <p>Archived Inventory Spent: <span id="archivedInventorySpent">$0.00</span></p>
-  <p>Archived Business Savings: <span id="archivedBusinessSavings">$0.00</span></p>
-</div>
+      <button id="addSaleBtn" type="button">Add Sale</button>
+      <p id="manualStatus" class="status"></p>
+    </section>
 
-<div class="card">
-  <h2>Sales</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th>Qty</th>
-        <th>Total Sales</th>
-        <th>Selling Costs</th>
-        <th>COGS</th>
-        <th>Profit</th>
-        <th>Date</th>
-      </tr>
-    </thead>
-    <tbody id="salesTableBody"></tbody>
-  </table>
-</div>
+    <!-- SALES TABLE -->
+    <section class="card">
+      <h2>Sales</h2>
 
-<div class="card">
-  <h2>Purchases</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Description</th>
-        <th>Amount</th>
-        <th>Item Count</th>
-        <th>Cost Per Item</th>
-      </tr>
-    </thead>
-    <tbody id="purchasesTableBody"></tbody>
-  </table>
-</div>
+      <div class="table-wrapper">
+        <table id="salesTable">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Qty</th>
+              <th>Total Sales</th>
+              <th>Total Selling Costs</th>
+              <th>COGS (editable)</th>
+              <th>Profit</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="salesTableBody"></tbody>
+        </table>
+      </div>
 
-<div class="card">
-  <h2>Salary Payments</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody id="salaryTableBody"></tbody>
-  </table>
-</div>
+      <div class="table-actions">
+        <button id="clearDataBtn" class="danger" type="button">Clear All Sales Data</button>
+        <p id="clearStatus" class="status"></p>
+      </div>
+    </section>
 
-<script src="app.js"></script>
+    <!-- MONTH ARCHIVE -->
+    <section class="card" id="monthArchiveSection">
+      <h2>Month Archive</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Profit</th>
+              <th>Salary Paid</th>
+              <th>Inventory Budget</th>
+              <th>Inventory Spent</th>
+              <th>Business Savings</th>
+            </tr>
+          </thead>
+          <tbody id="monthArchiveBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>Data is stored locally in your browser.</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
