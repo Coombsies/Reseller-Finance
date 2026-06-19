@@ -127,31 +127,45 @@
         </div>
       </div>
 
-      <!-- PURCHASES -->
-      <h3>Add Inventory Purchase</h3>
-      <div class="form-grid">
-        <label>Purchase Description
-          <input type="text" id="purchaseDesc" />
-        </label>
-        <label>Purchase Amount
-          <input type="number" id="purchaseAmount" step="0.01" />
-        </label>
-      </div>
-      <button id="addPurchaseBtn" type="button">Add Purchase</button>
-      <p id="purchaseStatus" class="status"></p>
+   <!-- PURCHASES -->
+<h3>Add Inventory Purchase</h3>
 
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Purchase</th>
-              <th>Amount</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
-          <tbody id="purchaseTableBody"></tbody>
-        </table>
-      </div>
+<div class="form-grid">
+  <label>Purchase Date
+    <input type="date" id="purchaseDate" />
+  </label>
+
+  <label>Purchase Description
+    <input type="text" id="purchaseDesc" />
+  </label>
+
+  <label>Purchase Amount (Total)
+    <input type="number" id="purchaseAmount" step="0.01" />
+  </label>
+
+  <label>Quantity
+    <input type="number" id="purchaseQty" step="1" min="1" />
+  </label>
+</div>
+
+<button id="addPurchaseBtn" type="button">Add Purchase</button>
+<p id="purchaseStatus" class="status"></p>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Purchase</th>
+        <th>Total</th>
+        <th>Qty</th>
+        <th>Cost/Item</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="purchaseTableBody"></tbody>
+  </table>
+</div>
 
       <hr class="section-divider">
 
