@@ -598,4 +598,4 @@ function init() {
   renderSalaryPayments();
 }
 
-document.addEventListener("DOMContentLoade
+document.addEventListener("DOMContentLoaded", init);
