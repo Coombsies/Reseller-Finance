@@ -342,10 +342,16 @@ function initSalaryPayments() {
     const { data } = getCurrentMonth();
     data.salaryPaid = (data.salaryPaid || 0) + amount;
 
-    data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
-      amount
-    });
+   const dateInput = document.getElementById("salaryDate").value;
+const date = dateInput && dateInput.trim() !== ""
+  ? dateInput
+  : new Date().toISOString().split("T")[0];
+
+data.salaryPayments.push({
+  date,
+  amount
+});
+
 
     saveJSON(STORAGE_KEYS.months, months);
 
