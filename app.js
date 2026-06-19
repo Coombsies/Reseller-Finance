@@ -196,6 +196,18 @@ function recomputeGlobalSummary() {
   updateSalaryProgressBar();
   renderMonthArchive();
 }
+  document.getElementById("monthProfit").textContent = formatCurrency(monthProfit);
+  document.getElementById("salaryPaid").textContent = formatCurrency(salaryPaid);
+  document.getElementById("remainingProfit").textContent = formatCurrency(remainingProfit);
+  document.getElementById("inventoryBudget").textContent = formatCurrency(data.inventoryBudget);
+  document.getElementById("inventorySpent").textContent = formatCurrency(data.inventorySpent || 0);
+  document.getElementById("inventoryRemaining").textContent =
+    formatCurrency((data.inventoryBudget || 0) - (data.inventorySpent || 0));
+  document.getElementById("businessSavings").textContent = formatCurrency(data.businessSavings);
+
+  updateSalaryProgressBar();
+  renderMonthArchive();
+}
 
 // ------------------------------
 // DELETE FUNCTIONS
@@ -221,8 +233,9 @@ function deleteSalaryPayment(index) {
   renderSalaryPayments();
   recomputeGlobalSummary();
 }
+
 // ------------------------------
-// RENDER TABLES (continued)
+// RENDER TABLES
 // ------------------------------
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -270,8 +283,11 @@ function renderPurchaseTable() {
   monthPurchases.forEach((p, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${p.date}</td>
       <td>${p.desc}</td>
+      <td>${p.qty}</td>
       <td>${formatCurrency(toNum(p.amount))}</td>
+      <td>${formatCurrency(p.costPerItem)}</td>
       <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
@@ -324,7 +340,7 @@ function renderSalaryPayments() {
 }
 
 // ------------------------------
-// SALARY SYSTEM
+// SALARY SYSTEM (UPDATED)
 // ------------------------------
 function initSalaryPayments() {
   const payInput = document.getElementById("salaryPayInput");
@@ -340,10 +356,16 @@ function initSalaryPayments() {
     }
 
     const { data } = getCurrentMonth();
+
+    const dateInput = document.getElementById("salaryDate").value;
+    const date = dateInput && dateInput.trim() !== ""
+      ? dateInput
+      : new Date().toISOString().split("T")[0];
+
     data.salaryPaid = (data.salaryPaid || 0) + amount;
 
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date,
       amount
     });
 
@@ -368,10 +390,15 @@ function initSalaryPayments() {
       return;
     }
 
+    const dateInput = document.getElementById("salaryDate").value;
+    const date = dateInput && dateInput.trim() !== ""
+      ? dateInput
+      : new Date().toISOString().split("T")[0];
+
     data.salaryPaid += remaining;
 
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date,
       amount: remaining
     });
 
@@ -385,17 +412,8 @@ function initSalaryPayments() {
   });
 }
 
-function updateSalaryProgressBar() {
-  const { data } = getCurrentMonth();
-  const goal = settings.salaryGoal || 0;
-  const paid = data.salaryPaid || 0;
-
-  const pct = goal > 0 ? Math.min((paid / goal) * 100, 100) : 0;
-  document.getElementById("salaryProgressBar").style.width = pct + "%";
-}
-
 // ------------------------------
-// PURCHASES
+// PURCHASES (UPDATED)
 // ------------------------------
 function initPurchases() {
   const descEl = document.getElementById("purchaseDesc");
@@ -406,15 +424,31 @@ function initPurchases() {
   btn.addEventListener("click", () => {
     const desc = descEl.value.trim();
     const amount = toNum(amountEl.value);
+    const qty = Number(document.getElementById("purchaseQty").value || 1);
+    const dateInput = document.getElementById("purchaseDate").value;
 
-    if (!desc || amount <= 0) {
-      statusEl.textContent = "Enter a description and amount.";
+    if (!desc || amount <= 0 || qty <= 0) {
+      statusEl.textContent = "Enter description, amount, and quantity.";
       return;
     }
 
+    const date = dateInput && dateInput.trim() !== ""
+      ? dateInput
+      : new Date().toISOString().split("T")[0];
+
     const { id, data } = getCurrentMonth();
 
-    purchases.push({ desc, amount, monthId: id });
+    const costPerItem = amount / qty;
+
+    purchases.push({
+      desc,
+      amount,
+      qty,
+      costPerItem,
+      date,
+      monthId: id
+    });
+
     data.inventorySpent = (data.inventorySpent || 0) + amount;
 
     saveJSON(STORAGE_KEYS.purchases, purchases);
@@ -425,6 +459,8 @@ function initPurchases() {
 
     descEl.value = "";
     amountEl.value = "";
+    document.getElementById("purchaseQty").value = "";
+    document.getElementById("purchaseDate").value = "";
 
     renderPurchaseTable();
     recomputeGlobalSummary();
