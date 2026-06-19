@@ -3,54 +3,6 @@
    Full Rebuild app.js
    ================================ */
 
-/*  
-   DATA STRUCTURE (NEW SCHEMA)
-
-   sales: [
-     {
-       title: "",
-       qty: number,
-       totalSales: number,
-       totalSellingCosts: number,
-       cogs: number,
-       profit: number,
-       date: "YYYY-MM-DD",
-       monthId: "YYYY-MM"
-     }
-   ]
-
-   purchases: [
-     {
-       date: "YYYY-MM-DD",
-       desc: "",
-       amount: number,
-       itemCount: number,
-       costPerItem: number,
-       monthId: "YYYY-MM"
-     }
-   ]
-
-   salaryPayments: [
-     {
-       date: "YYYY-MM-DD",
-       amount: number,
-       monthId: "YYYY-MM"
-     }
-   ]
-
-   monthArchive: {
-     "YYYY-MM": {
-       profit: number,
-       salaryPaid: number,
-       inventoryBudget: number,
-       inventorySpent: number,
-       businessSavings: number
-     }
-   }
-
-   salaryGoal: number
-*/
-
 let sales = [];
 let purchases = [];
 let salaryPayments = [];
@@ -141,25 +93,17 @@ function renderDashboard() {
   const totals = getCurrentMonthTotals();
 
   const totalRevenueEl = document.getElementById("totalRevenue");
-  const totalCogsEl = document.getElementById("totalCogs");
-  const totalProfitEl = document.getElementById("totalProfit");
-  const inventorySpentEl = document.getElementById("inventorySpent");
-  const salaryPaidEl = document.getElementById("salaryPaid");
-  const salaryGoalDisplayEl = document.getElementById("salaryGoalDisplay");
-  const currentMonthLabelEl = document.getElementById("currentMonthLabel");
-  const lastUpdatedEl = document.getElementById("lastUpdated");
+  if (!totalRevenueEl) return; // guard if HTML not ready
 
-  if (!totalRevenueEl) return; // hard guard if HTML not loaded
+  document.getElementById("totalRevenue").textContent = formatCurrency(totals.revenue);
+  document.getElementById("totalCogs").textContent = formatCurrency(totals.cogs);
+  document.getElementById("totalProfit").textContent = formatCurrency(totals.profit);
+  document.getElementById("inventorySpent").textContent = formatCurrency(totals.inventorySpent);
+  document.getElementById("salaryPaid").textContent = formatCurrency(totals.salaryPaid);
 
-  totalRevenueEl.textContent = formatCurrency(totals.revenue);
-  totalCogsEl.textContent = formatCurrency(totals.cogs);
-  totalProfitEl.textContent = formatCurrency(totals.profit);
-  inventorySpentEl.textContent = formatCurrency(totals.inventorySpent);
-  salaryPaidEl.textContent = formatCurrency(totals.salaryPaid);
-
-  salaryGoalDisplayEl.textContent = formatCurrency(salaryGoal);
-  currentMonthLabelEl.textContent = currentMonthId;
-  lastUpdatedEl.textContent = lastUpdated || "N/A";
+  document.getElementById("salaryGoalDisplay").textContent = formatCurrency(salaryGoal);
+  document.getElementById("currentMonthLabel").textContent = currentMonthId;
+  document.getElementById("lastUpdated").textContent = lastUpdated || "N/A";
 
   renderSalesTable();
   renderPurchasesTable();
@@ -242,18 +186,13 @@ function renderArchiveSnapshot() {
   };
 
   const ap = document.getElementById("archivedProfit");
-  const as = document.getElementById("archivedSalaryPaid");
-  const ab = document.getElementById("archivedInventoryBudget");
-  const ai = document.getElementById("archivedInventorySpent");
-  const bs = document.getElementById("archivedBusinessSavings");
-
   if (!ap) return;
 
-  ap.textContent = formatCurrency(archived.profit);
-  as.textContent = formatCurrency(archived.salaryPaid);
-  ab.textContent = formatCurrency(archived.inventoryBudget);
-  ai.textContent = formatCurrency(archived.inventorySpent);
-  bs.textContent = formatCurrency(archived.businessSavings);
+  document.getElementById("archivedProfit").textContent = formatCurrency(archived.profit);
+  document.getElementById("archivedSalaryPaid").textContent = formatCurrency(archived.salaryPaid);
+  document.getElementById("archivedInventoryBudget").textContent = formatCurrency(archived.inventoryBudget);
+  document.getElementById("archivedInventorySpent").textContent = formatCurrency(archived.inventorySpent);
+  document.getElementById("archivedBusinessSavings").textContent = formatCurrency(archived.businessSavings);
 }
 
 /* ================================
@@ -289,24 +228,24 @@ function addPurchase(purchaseObj) {
    SALARY PAYMENTS
    ================================ */
 
-function paySalary(amount) {
-  const today = new Date().toISOString().slice(0, 10);
+function paySalary(amount, dateStr) {
+  const date = dateStr || new Date().toISOString().slice(0, 10);
 
   salaryPayments.push({
-    date: today,
+    date,
     amount,
-    monthId: getMonthIdFromDate(today)
+    monthId: getMonthIdFromDate(date)
   });
 
-  lastUpdated = today;
+  lastUpdated = date;
 
   saveData();
   renderDashboard();
 }
 
-function payFullSalaryGoal() {
+function payFullSalaryGoalToday() {
   if (salaryGoal > 0) {
-    paySalary(salaryGoal);
+    paySalary(salaryGoal, null);
   }
 }
 
@@ -448,6 +387,37 @@ function initEventHandlers() {
     });
   }
 
+  /* ---- Manual Sale ---- */
+  const addSaleBtn = document.getElementById("addSaleBtn");
+  if (addSaleBtn) {
+    addSaleBtn.addEventListener("click", () => {
+      const title = document.getElementById("saleTitle").value.trim();
+      const qty = Number(document.getElementById("saleQty").value);
+      const totalSales = Number(document.getElementById("saleTotalSales").value);
+      const sellingCosts = Number(document.getElementById("saleSellingCosts").value);
+      const cogs = Number(document.getElementById("saleCogs").value);
+      const date = document.getElementById("saleDate").value;
+
+      if (!title || !qty || !totalSales || !date) return;
+
+      addSale({
+        title,
+        qty,
+        totalSales,
+        totalSellingCosts: sellingCosts,
+        cogs,
+        date
+      });
+
+      document.getElementById("saleTitle").value = "";
+      document.getElementById("saleQty").value = "";
+      document.getElementById("saleTotalSales").value = "";
+      document.getElementById("saleSellingCosts").value = "";
+      document.getElementById("saleCogs").value = "";
+      document.getElementById("saleDate").value = "";
+    });
+  }
+
   /* ---- Add Purchase ---- */
   const purchaseBtn = document.getElementById("addPurchaseBtn");
   if (purchaseBtn) {
@@ -497,13 +467,14 @@ function initEventHandlers() {
   if (paySalaryBtn) {
     paySalaryBtn.addEventListener("click", () => {
       const amt = Number(document.getElementById("salaryAmount").value);
-      if (amt > 0) paySalary(amt);
+      const date = document.getElementById("salaryDate").value;
+      if (amt > 0) paySalary(amt, date || null);
     });
   }
 
   if (payFullSalaryBtn) {
     payFullSalaryBtn.addEventListener("click", () => {
-      payFullSalaryGoal();
+      payFullSalaryGoalToday();
     });
   }
 
@@ -531,7 +502,3 @@ document.addEventListener("DOMContentLoaded", () => {
   initEventHandlers();
   renderDashboard();
 });
-
-/* ================================
-   END OF FILE
-   ================================ */
