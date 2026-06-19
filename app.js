@@ -221,8 +221,9 @@ function deleteSalaryPayment(index) {
   renderSalaryPayments();
   recomputeGlobalSummary();
 }
+
 // ------------------------------
-// RENDER TABLES (continued)
+// RENDER TABLES
 // ------------------------------
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -270,8 +271,11 @@ function renderPurchaseTable() {
   monthPurchases.forEach((p, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${p.date}</td>
       <td>${p.desc}</td>
       <td>${formatCurrency(toNum(p.amount))}</td>
+      <td>${p.qty}</td>
+      <td>${formatCurrency(p.costPerItem)}</td>
       <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
@@ -324,7 +328,7 @@ function renderSalaryPayments() {
 }
 
 // ------------------------------
-// SALARY SYSTEM
+// SALARY SYSTEM (UPDATED)
 // ------------------------------
 function initSalaryPayments() {
   const payInput = document.getElementById("salaryPayInput");
@@ -339,11 +343,14 @@ function initSalaryPayments() {
       return;
     }
 
+    const dateInput = document.getElementById("salaryPayDate");
+    const payDate = dateInput.value || new Date().toISOString().split("T")[0];
+
     const { data } = getCurrentMonth();
     data.salaryPaid = (data.salaryPaid || 0) + amount;
 
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date: payDate,
       amount
     });
 
@@ -368,10 +375,13 @@ function initSalaryPayments() {
       return;
     }
 
+    const dateInput = document.getElementById("salaryPayDate");
+    const payDate = dateInput.value || new Date().toISOString().split("T")[0];
+
     data.salaryPaid += remaining;
 
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date: payDate,
       amount: remaining
     });
 
@@ -395,26 +405,40 @@ function updateSalaryProgressBar() {
 }
 
 // ------------------------------
-// PURCHASES
+// PURCHASES (UPDATED)
 // ------------------------------
 function initPurchases() {
+  const dateEl = document.getElementById("purchaseDate");
   const descEl = document.getElementById("purchaseDesc");
   const amountEl = document.getElementById("purchaseAmount");
+  const qtyEl = document.getElementById("purchaseQty");
   const btn = document.getElementById("addPurchaseBtn");
   const statusEl = document.getElementById("purchaseStatus");
 
   btn.addEventListener("click", () => {
+    const date = dateEl.value || new Date().toISOString().split("T")[0];
     const desc = descEl.value.trim();
     const amount = toNum(amountEl.value);
+    const qty = Number(qtyEl.value);
 
-    if (!desc || amount <= 0) {
-      statusEl.textContent = "Enter a description and amount.";
+    if (!desc || amount <= 0 || qty <= 0) {
+      statusEl.textContent = "Enter date, description, amount, and quantity.";
       return;
     }
 
+    const costPerItem = amount / qty;
+
     const { id, data } = getCurrentMonth();
 
-    purchases.push({ desc, amount, monthId: id });
+    purchases.push({
+      date,
+      desc,
+      amount,
+      qty,
+      costPerItem,
+      monthId: id
+    });
+
     data.inventorySpent = (data.inventorySpent || 0) + amount;
 
     saveJSON(STORAGE_KEYS.purchases, purchases);
@@ -423,8 +447,10 @@ function initPurchases() {
     statusEl.textContent = "Purchase added.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
+    dateEl.value = "";
     descEl.value = "";
     amountEl.value = "";
+    qtyEl.value = "";
 
     renderPurchaseTable();
     recomputeGlobalSummary();
@@ -528,7 +554,7 @@ function initClearData() {
     sales = [];
     saveJSON(STORAGE_KEYS.sales, sales);
 
-    statusEl.textContent = "All sales cleared.";
+       statusEl.textContent = "All sales cleared.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     recomputeGlobalSummary();
