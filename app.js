@@ -388,6 +388,8 @@ data.salaryPayments.push({
   });
 
   saveJSON(STORAGE_KEYS.months, months);
+recomputeGlobalSummary();
+renderSalaryPayments();
 
   statusEl.textContent = `Paid remaining ${formatCurrency(remaining)} salary.`;
   setTimeout(() => (statusEl.textContent = ""), 2500);
