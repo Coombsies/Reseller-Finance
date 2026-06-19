@@ -64,9 +64,14 @@
 
       <!-- PAY SALARY -->
       <div class="form-grid">
+        <label>Salary Payment Date
+          <input type="date" id="salaryPayDate" />
+        </label>
+
         <label>Pay Salary Amount
           <input type="number" id="salaryPayInput" step="0.01" />
         </label>
+
         <button id="paySalaryBtn" type="button">Pay Salary</button>
       </div>
 
@@ -97,46 +102,40 @@
 
       <!-- MONTHLY NUMBERS -->
       <div class="summary-grid">
-        <div class="summary-card">
-          <h3>Month Profit (from sales)</h3>
-          <p id="monthProfit">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Salary Paid</h3>
-          <p id="salaryPaid">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Remaining Profit</h3>
-          <p id="remainingProfit">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Inventory Budget (75%)</h3>
-          <p id="inventoryBudget">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Inventory Spent</h3>
-          <p id="inventorySpent">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Inventory Remaining</h3>
-          <p id="inventoryRemaining">$0.00</p>
-        </div>
-        <div class="summary-card">
-          <h3>Business Savings (25%)</h3>
-          <p id="businessSavings">$0.00</p>
-        </div>
+        <div class="summary-card"><h3>Month Profit (from sales)</h3><p id="monthProfit">$0.00</p></div>
+        <div class="summary-card"><h3>Salary Paid</h3><p id="salaryPaid">$0.00</p></div>
+        <div class="summary-card"><h3>Remaining Profit</h3><p id="remainingProfit">$0.00</p></div>
+        <div class="summary-card"><h3>Inventory Budget (75%)</h3><p id="inventoryBudget">$0.00</p></div>
+        <div class="summary-card"><h3>Inventory Spent</h3><p id="inventorySpent">$0.00</p></div>
+        <div class="summary-card"><h3>Inventory Remaining</h3><p id="inventoryRemaining">$0.00</p></div>
+        <div class="summary-card"><h3>Business Savings (25%)</h3><p id="businessSavings">$0.00</p></div>
       </div>
 
       <!-- PURCHASES -->
       <h3>Add Inventory Purchase</h3>
+
       <div class="form-grid">
-        <label>Purchase Description
+        <label>Date
+          <input type="date" id="purchaseDate" />
+        </label>
+
+        <label>Description
           <input type="text" id="purchaseDesc" />
         </label>
-        <label>Purchase Amount
+
+        <label>Amount
           <input type="number" id="purchaseAmount" step="0.01" />
         </label>
+
+        <label>Item Count
+          <input type="number" id="purchaseItemCount" />
+        </label>
+
+        <label>Cost Per Item
+          <span id="purchaseCostPerItem">$0.00</span>
+        </label>
       </div>
+
       <button id="addPurchaseBtn" type="button">Add Purchase</button>
       <p id="purchaseStatus" class="status"></p>
 
@@ -144,8 +143,11 @@
         <table>
           <thead>
             <tr>
-              <th>Purchase</th>
+              <th>Date</th>
+              <th>Description</th>
               <th>Amount</th>
+              <th>Items</th>
+              <th>Cost/Item</th>
               <th>Delete</th>
             </tr>
           </thead>
