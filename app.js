@@ -1,557 +1,434 @@
-/* ============================================================
-   LOCAL STORAGE KEYS
-============================================================ */
-const STORAGE_KEYS = {
-  sales: "rf_sales",
-  purchases: "rf_purchases",
-  settings: "rf_settings",
-  months: "rf_months"
-};
+/* ================================
+   Reseller Finance Dashboard (NEW SCHEMA)
+   Fully Rebuilt app.js — PART 1 OF 3
+   ================================ */
 
-/* ============================================================
-   HELPERS
-============================================================ */
-function loadJSON(key, fallback) {
+/*  
+   DATA STRUCTURE (NEW SCHEMA)
+
+   sales: [
+     {
+       title: "",
+       qty: number,
+       totalSales: number,
+       totalSellingCosts: number,
+       cogs: number,
+       profit: number,
+       date: "YYYY-MM-DD",
+       monthId: "YYYY-MM"
+     }
+   ]
+
+   purchases: [
+     {
+       date: "YYYY-MM-DD",
+       desc: "",
+       amount: number,
+       itemCount: number,
+       costPerItem: number,
+       monthId: "YYYY-MM"
+     }
+   ]
+
+   salaryPayments: [
+     {
+       date: "YYYY-MM-DD",
+       amount: number,
+       monthId: "YYYY-MM"
+     }
+   ]
+
+   monthArchive: {
+     "YYYY-MM": {
+       profit: number,
+       salaryPaid: number,
+       inventoryBudget: number,
+       inventorySpent: number,
+       businessSavings: number
+     }
+   }
+
+   salaryGoal: number
+*/
+
+let sales = [];
+let purchases = [];
+let salaryPayments = [];
+let monthArchive = {};
+let salaryGoal = 0;
+
+let currentMonthId = "";
+let lastUpdated = "";
+
+/* ================================
+   SAVE + LOAD
+   ================================ */
+
+function saveData() {
+  const data = {
+    sales,
+    purchases,
+    salaryPayments,
+    monthArchive,
+    salaryGoal,
+    currentMonthId,
+    lastUpdated
+  };
+  localStorage.setItem("resellerFinanceData", JSON.stringify(data));
+}
+
+function loadData() {
+  const raw = localStorage.getItem("resellerFinanceData");
+  if (!raw) return;
+
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
+    const data = JSON.parse(raw);
+
+    sales = data.sales || [];
+    purchases = data.purchases || [];
+    salaryPayments = data.salaryPayments || [];
+    monthArchive = data.monthArchive || {};
+    salaryGoal = data.salaryGoal || 0;
+    currentMonthId = data.currentMonthId || "";
+    lastUpdated = data.lastUpdated || "";
+
+  } catch (e) {
+    console.error("Error loading data:", e);
   }
 }
 
-function saveJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+/* ================================
+   HELPERS
+   ================================ */
+
+function getMonthIdFromDate(dateStr) {
+  return dateStr.slice(0, 7); // "YYYY-MM"
 }
 
-function toNum(v) {
-  return Number(String(v || "0").replace(/[^0-9.-]/g, ""));
+function formatCurrency(num) {
+  return "$" + num.toFixed(2);
 }
 
-function formatCurrency(n) {
-  return `$${(n || 0).toFixed(2)}`;
+function getCurrentMonthTotals() {
+  const monthSales = sales.filter(s => s.monthId === currentMonthId);
+  const monthPurchases = purchases.filter(p => p.monthId === currentMonthId);
+  const monthSalary = salaryPayments.filter(sp => sp.monthId === currentMonthId);
+
+  const revenue = monthSales.reduce((t, s) => t + s.totalSales, 0);
+  const cogs = monthSales.reduce((t, s) => t + s.cogs, 0);
+  const sellingCosts = monthSales.reduce((t, s) => t + s.totalSellingCosts, 0);
+  const profit = monthSales.reduce((t, s) => t + s.profit, 0);
+
+  const inventorySpent = monthPurchases.reduce((t, p) => t + p.amount, 0);
+  const salaryPaid = monthSalary.reduce((t, sp) => t + sp.amount, 0);
+
+  return {
+    revenue,
+    cogs,
+    sellingCosts,
+    profit,
+    inventorySpent,
+    salaryPaid
+  };
 }
 
-function getCurrentMonthId() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
+/* ================================
+   RENDER UI
+   ================================ */
 
-/* ============================================================
-   LOAD DATA
-============================================================ */
-let sales = loadJSON(STORAGE_KEYS.sales, []);
-let purchases = loadJSON(STORAGE_KEYS.purchases, []);
-let settings = loadJSON(STORAGE_KEYS.settings, { salaryGoal: 0 });
-let months = loadJSON(STORAGE_KEYS.months, {});
+function renderDashboard() {
+  const totals = getCurrentMonthTotals();
 
-/* ============================================================
-   MONTH LOGIC
-============================================================ */
-function ensureMonthExists(monthId) {
-  if (!months[monthId]) {
-    months[monthId] = {
-      profit: 0,
-      salaryPaid: 0,
-      inventoryBudget: 0,
-      inventorySpent: 0,
-      businessSavings: 0,
-      salaryPayments: [],
-      isLocked: false
-    };
-    saveJSON(STORAGE_KEYS.months, months);
-  }
-}
+  document.getElementById("totalRevenue").textContent = formatCurrency(totals.revenue);
+  document.getElementById("totalCogs").textContent = formatCurrency(totals.cogs);
+  document.getElementById("totalProfit").textContent = formatCurrency(totals.profit);
+  document.getElementById("inventorySpent").textContent = formatCurrency(totals.inventorySpent);
+  document.getElementById("salaryPaid").textContent = formatCurrency(totals.salaryPaid);
 
-function getCurrentMonth() {
-  const id = getCurrentMonthId();
-  ensureMonthExists(id);
-  document.getElementById("currentMonthName").textContent = id;
-  return { id, data: months[id] };
-}
+  document.getElementById("salaryGoalDisplay").textContent = formatCurrency(salaryGoal);
+  document.getElementById("currentMonthLabel").textContent = currentMonthId;
+  document.getElementById("lastUpdated").textContent = lastUpdated;
 
-/* ============================================================
-   CSV PARSER
-============================================================ */
-function parseCsv(text) {
-  const rows = [];
-  let current = "";
-  let insideQuotes = false;
-  let row = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (char === '"' && insideQuotes && next === '"') {
-      current += '"';
-      i++;
-    } else if (char === '"') {
-      insideQuotes = !insideQuotes;
-    } else if (char === ',' && !insideQuotes) {
-      row.push(current);
-      current = "";
-    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
-      if (current.length > 0 || row.length > 0) {
-        row.push(current);
-        rows.push(row);
-        row = [];
-        current = "";
-      }
-    } else {
-      current += char;
-    }
-  }
-
-  if (current.length > 0 || row.length > 0) {
-    row.push(current);
-    rows.push(row);
-  }
-
-  const header = rows.shift().map(h => h.trim().toLowerCase());
-
-  const idxTitle = header.findIndex(h => h.includes("listing title"));
-  const idxQty = header.findIndex(h => h.includes("quantity sold"));
-  const idxTotalSales = header.findIndex(h => h.includes("total sales"));
-  const idxTotalCosts = header.findIndex(h => h.includes("total selling costs"));
-  const idxCogs = header.findIndex(h => h.includes("cogs"));
-
-  const parsed = [];
-
-  rows.forEach(cols => {
-    if (!cols || cols.length < 3) return;
-
-    parsed.push({
-      title: idxTitle >= 0 ? cols[idxTitle] : "",
-      qty: idxQty >= 0 ? Number(cols[idxQty] || 1) : 1,
-      totalSales: idxTotalSales >= 0 ? cols[idxTotalSales] : "0",
-      totalCosts: idxTotalCosts >= 0 ? cols[idxTotalCosts] : "0",
-      cogs: idxCogs >= 0 ? cols[idxCogs] : "0",
-      monthId: getCurrentMonthId()
-    });
-  });
-
-  return parsed;
-}
-
-/* ============================================================
-   GLOBAL SUMMARY
-============================================================ */
-function computeSaleProfit(sale) {
-  return toNum(sale.totalSales) - toNum(sale.totalCosts) - toNum(sale.cogs);
-}
-
-function recomputeGlobalSummary() {
-  let totalRevenue = 0;
-  let totalCogs = 0;
-  let totalProfit = 0;
-  let totalQty = 0;
-
-  sales.forEach(sale => {
-    const qty = Number(sale.qty || 1);
-    const revenue = toNum(sale.totalSales);
-    const cogs = toNum(sale.cogs);
-    const costs = toNum(sale.totalCosts);
-    const profit = revenue - costs - cogs;
-
-    totalRevenue += revenue;
-    totalCogs += cogs;
-    totalProfit += profit;
-    totalQty += qty;
-  });
-
-  document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
-  document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
-  document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
-  document.getElementById("avgSalePrice").textContent =
-    totalQty > 0 ? formatCurrency(totalRevenue / totalQty) : "$0.00";
-  document.getElementById("sellThroughRate").textContent =
-    totalQty > 0 ? "100%" : "N/A";
-
-  const { id, data } = getCurrentMonth();
-  const monthSales = sales.filter(s => s.monthId === id);
-
-  let monthProfit = 0;
-  monthSales.forEach(s => (monthProfit += computeSaleProfit(s)));
-
-  data.profit = monthProfit;
-
-  const salaryPaid = data.salaryPaid || 0;
-  const remainingProfit = monthProfit - salaryPaid;
-
-  data.inventoryBudget = remainingProfit * 0.75;
-  data.businessSavings = remainingProfit * 0.25;
-
-  saveJSON(STORAGE_KEYS.months, months);
-
-  document.getElementById("monthProfit").textContent = formatCurrency(monthProfit);
-  document.getElementById("salaryPaid").textContent = formatCurrency(salaryPaid);
-  document.getElementById("remainingProfit").textContent = formatCurrency(remainingProfit);
-  document.getElementById("inventoryBudget").textContent = formatCurrency(data.inventoryBudget);
-  document.getElementById("inventorySpent").textContent = formatCurrency(data.inventorySpent || 0);
-  document.getElementById("inventoryRemaining").textContent =
-    formatCurrency((data.inventoryBudget || 0) - (data.inventorySpent || 0));
-  document.getElementById("businessSavings").textContent = formatCurrency(data.businessSavings);
-
-  updateSalaryProgressBar();
-  renderMonthArchive();
-}
-
-/* ============================================================
-   DELETE FUNCTIONS
-============================================================ */
-function deleteSale(index) {
-  sales.splice(index, 1);
-  saveJSON(STORAGE_KEYS.sales, sales);
-  recomputeGlobalSummary();
   renderSalesTable();
+  renderPurchasesTable();
+  renderSalaryTable();
 }
 
-function deletePurchase(index) {
-  purchases.splice(index, 1);
-  saveJSON(STORAGE_KEYS.purchases, purchases);
-  recomputeGlobalSummary();
-  renderPurchaseTable();
-}
-
-function deleteSalaryPayment(index) {
-  const { data } = getCurrentMonth();
-  data.salaryPayments.splice(index, 1);
-  saveJSON(STORAGE_KEYS.months, months);
-  renderSalaryPayments();
-  recomputeGlobalSummary();
-}
-
-/* ============================================================
-   RENDER TABLES
-============================================================ */
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
   tbody.innerHTML = "";
 
-  sales.forEach((sale, index) => {
+  const monthSales = sales.filter(s => s.monthId === currentMonthId);
+
+  monthSales.forEach((s, i) => {
     const tr = document.createElement("tr");
-    const profit = computeSaleProfit(sale);
 
     tr.innerHTML = `
-      <td>${sale.title}</td>
-      <td>${sale.qty}</td>
-      <td>${formatCurrency(toNum(sale.totalSales))}</td>
-      <td>${formatCurrency(toNum(sale.totalCosts))}</td>
-      <td><input type="number" step="0.01" value="${toNum(sale.cogs).toFixed(2)}" data-index="${index}" class="cogs-input" /></td>
-      <td>${formatCurrency(profit)}</td>
-      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
+      <td>${s.title}</td>
+      <td>${s.qty}</td>
+      <td>${formatCurrency(s.totalSales)}</td>
+      <td>${formatCurrency(s.totalSellingCosts)}</td>
+      <td>${formatCurrency(s.cogs)}</td>
+      <td>${formatCurrency(s.profit)}</td>
+      <td>${s.date}</td>
     `;
 
     tbody.appendChild(tr);
   });
-
-  tbody.querySelectorAll(".cogs-input").forEach(input => {
-    input.addEventListener("change", e => {
-      const idx = Number(e.target.dataset.index);
-      sales[idx].cogs = toNum(e.target.value);
-      saveJSON(STORAGE_KEYS.sales, sales);
-      recomputeGlobalSummary();
-      renderSalesTable();
-    });
-  });
-
-  tbody.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.addEventListener("click", e => deleteSale(Number(e.target.dataset.index)));
-  });
 }
 
-function renderPurchaseTable() {
-  const tbody = document.getElementById("purchaseTableBody");
+function renderPurchasesTable() {
+  const tbody = document.getElementById("purchasesTableBody");
   tbody.innerHTML = "";
 
-  const { id } = getCurrentMonth();
-  const monthPurchases = purchases.filter(p => p.monthId === id);
+  const monthPurchases = purchases.filter(p => p.monthId === currentMonthId);
 
-  monthPurchases.forEach((p, index) => {
+  monthPurchases.forEach(p => {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
       <td>${p.date}</td>
       <td>${p.desc}</td>
-      <td>${formatCurrency(toNum(p.amount))}</td>
+      <td>${formatCurrency(p.amount)}</td>
       <td>${p.itemCount}</td>
       <td>${formatCurrency(p.costPerItem)}</td>
-      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
 
     tbody.appendChild(tr);
   });
-
-  tbody.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.addEventListener("click", e => deletePurchase(Number(e.target.dataset.index)));
-  });
 }
 
-function renderMonthArchive() {
-  const tbody = document.getElementById("monthArchiveBody");
+function renderSalaryTable() {
+  const tbody = document.getElementById("salaryTableBody");
   tbody.innerHTML = "";
 
-  Object.keys(months)
-    .sort()
-    .forEach(id => {
-      const m = months[id];
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${id}</td>
-        <td>${formatCurrency(m.profit)}</td>
-        <td>${formatCurrency(m.salaryPaid)}</td>
-        <td>${formatCurrency(m.inventoryBudget)}</td>
-        <td>${formatCurrency(m.inventorySpent)}</td>
-        <td>${formatCurrency(m.businessSavings)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-}
+  const monthSalary = salaryPayments.filter(sp => sp.monthId === currentMonthId);
 
-function renderSalaryPayments() {
-  const { data } = getCurrentMonth();
-  const tbody = document.getElementById("salaryPaymentsBody");
-  tbody.innerHTML = "";
-
-  (data.salaryPayments || []).forEach((p, index) => {
+  monthSalary.forEach(sp => {
     const tr = document.createElement("tr");
+
     tr.innerHTML = `
-      <td>${p.date}</td>
-      <td>${formatCurrency(p.amount)}</td>
-      <td><button class="delete-btn" data-index="${index}">Delete</button></td>
+      <td>${sp.date}</td>
+      <td>${formatCurrency(sp.amount)}</td>
     `;
+
     tbody.appendChild(tr);
   });
-
-  tbody.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.addEventListener("click", e => deleteSalaryPayment(Number(e.target.dataset.index)));
-  });
 }
 
-/* ============================================================
-   SALARY SYSTEM
-============================================================ */
-function initSalaryPayments() {
-  const payInput = document.getElementById("salaryPayInput");
-  const payDateEl = document.getElementById("salaryPayDate");
-  const payBtn = document.getElementById("paySalaryBtn");
-  const payFullBtn = document.getElementById("payFullSalaryBtn");
-  const statusEl = document.getElementById("salaryStatus");
+/* ================================
+   PART 1 END — WAIT FOR PART 2
+   ================================ */
+/* ================================
+   ADDING SALES
+   ================================ */
 
-  payBtn.addEventListener("click", () => {
-    const amount = toNum(payInput.value);
-    const date = payDateEl.value.trim();
+function addSale(saleObj) {
+  saleObj.monthId = getMonthIdFromDate(saleObj.date);
+  saleObj.profit = saleObj.totalSales - saleObj.totalSellingCosts - saleObj.cogs;
 
-    if (!date) {
-      statusEl.textContent = "Enter a salary payment date.";
-      return;
-    }
+  sales.push(saleObj);
+  lastUpdated = new Date().toISOString().slice(0, 10);
 
-    if (amount <= 0) {
-      statusEl.textContent = "Enter a valid salary amount.";
-      return;
-    }
-
-    const { data } = getCurrentMonth();
-    data.salaryPaid = (data.salaryPaid || 0) + amount;
-
-    data.salaryPayments.push({ date, amount });
-
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = `Paid ${formatCurrency(amount)} salary.`;
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    payInput.value = "";
-    payDateEl.value = "";
-
-    recomputeGlobalSummary();
-    renderSalaryPayments();
-  });
-
-  payFullBtn.addEventListener("click", () => {
-    const date = payDateEl.value.trim();
-    if (!date) {
-      statusEl.textContent = "Enter a salary payment date.";
-      return;
-    }
-
-    const goal = settings.salaryGoal || 0;
-    const { data } = getCurrentMonth();
-
-    const remaining = goal - (data.salaryPaid || 0);
-    if (remaining <= 0) {
-      statusEl.textContent = "Salary goal already met.";
-      return;
-    }
-
-    data.salaryPaid += remaining;
-
-    data.salaryPayments.push({ date, amount: remaining });
-
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = `Paid full salary goal (${formatCurrency(remaining)}).`;
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    recomputeGlobalSummary();
-    renderSalaryPayments();
-  });
+  saveData();
+  renderDashboard();
 }
 
-function updateSalaryProgressBar() {
-  const { data } = getCurrentMonth();
-  const goal = settings.salaryGoal || 0;
-  const paid = data.salaryPaid || 0;
+/* ================================
+   ADDING PURCHASES
+   ================================ */
 
-  const pct = goal > 0 ? Math.min((paid / goal) * 100, 100) : 0;
-  document.getElementById("salaryProgressBar").style.width = pct + "%";
+function addPurchase(purchaseObj) {
+  purchaseObj.monthId = getMonthIdFromDate(purchaseObj.date);
+
+  purchases.push(purchaseObj);
+  lastUpdated = new Date().toISOString().slice(0, 10);
+
+  saveData();
+  renderDashboard();
 }
 
-/* ============================================================
-   PURCHASES
-============================================================ */
-function initPurchases() {
-  const descEl = document.getElementById("purchaseDesc");
-  const amountEl = document.getElementById("purchaseAmount");
-  const dateEl = document.getElementById("purchaseDate");
-  const countEl = document.getElementById("purchaseItemCount");
-  const btn = document.getElementById("addPurchaseBtn");
-  const statusEl = document.getElementById("purchaseStatus");
+/* ================================
+   SALARY PAYMENTS
+   ================================ */
 
-  btn.addEventListener("click", () => {
-    const desc = descEl.value.trim();
-    const amount = toNum(amountEl.value);
-    const date = dateEl.value.trim();
-    const itemCount = Number(countEl.value);
+function paySalary(amount) {
+  const today = new Date().toISOString().slice(0, 10);
 
-    if (!date) {
-      statusEl.textContent = "Enter a purchase date.";
-      return;
-    }
-
-    if (!desc) {
-      statusEl.textContent = "Enter a purchase description.";
-      return;
-    }
-
-    if (amount <= 0) {
-      statusEl.textContent = "Enter a valid purchase amount.";
-      return;
-    }
-
-    if (!itemCount || itemCount <= 0) {
-      statusEl.textContent = "Enter a valid item count.";
-      return;
-    }
-
-    const costPerItem = amount / itemCount;
-
-    const { id, data } = getCurrentMonth();
-
-    purchases.push({
-      date,
-      desc,
-      amount,
-      itemCount,
-      costPerItem,
-      monthId: id
-    });
-
-    data.inventorySpent = (data.inventorySpent || 0) + amount;
-
-    saveJSON(STORAGE_KEYS.purchases, purchases);
-    saveJSON(STORAGE_KEYS.months, months);
-
-    statusEl.textContent = "Purchase added.";
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    descEl.value = "";
-    amountEl.value = "";
-    dateEl.value = "";
-    countEl.value = "";
-
-    renderPurchaseTable();
-    recomputeGlobalSummary();
+  salaryPayments.push({
+    date: today,
+    amount,
+    monthId: getMonthIdFromDate(today)
   });
+
+  lastUpdated = today;
+
+  saveData();
+  renderDashboard();
 }
 
-/* ============================================================
-   MANUAL SALES
-============================================================ */
-function initManualSaleEntry() {
-  const titleEl = document.getElementById("manualTitle");
-  const saleEl = document.getElementById("manualSale");
-  const costsEl = document.getElementById("manualCosts");
-  const cogsEl = document.getElementById("manualCogs");
-  const btn = document.getElementById("addSaleBtn");
-  const statusEl = document.getElementById("manualStatus");
-
-  btn.addEventListener("click", () => {
-    const title = titleEl.value.trim();
-    const totalSales = toNum(saleEl.value);
-    const totalCosts = toNum(costsEl.value);
-    const cogs = toNum(cogsEl.value);
-
-    if (!title || totalSales <= 0) {
-      statusEl.textContent = "Enter at least a title and total sales.";
-      return;
-    }
-
-    sales.push({
-      title,
-      qty: 1,
-      totalSales,
-      totalCosts,
-      cogs,
-      monthId: getCurrentMonthId()
-    });
-
-    saveJSON(STORAGE_KEYS.sales, sales);
-
-    statusEl.textContent = "Manual sale added.";
-    setTimeout(() => (statusEl.textContent = ""), 2500);
-
-    titleEl.value = "";
-    saleEl.value = "";
-    costsEl.value = "";
-    cogsEl.value = "";
-
-    recomputeGlobalSummary();
-    renderSalesTable();
-  });
+function payFullSalaryGoal() {
+  paySalary(salaryGoal);
 }
 
-/* ============================================================
+/* ================================
    CSV IMPORT
-============================================================ */
-function initCsvImport() {
-  const fileInput = document.getElementById("csvFileInput");
-  const loadBtn = document.getElementById("loadCsvBtn");
-  const statusEl = document.getElementById("uploadStatus");
+   ================================ */
 
-  loadBtn.addEventListener("click", () => {
-    const file = fileInput.files?.[0];
-    if (!file) {
-      statusEl.textContent = "No file selected.";
-      return;
-    }
+function parseCsv(text) {
+  const rows = text.trim().split("\n").map(r => r.split(","));
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      const rows = parseCsv(e.target.result);
+  const parsed = [];
 
-      if (rows.length === 0) {
-        statusEl.textContent = "No valid rows found.";
-        return;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+
+    if (r.length < 6) continue;
+
+    const title = r[0].trim();
+    const qty = Number(r[1]);
+    const totalSales = Number(r[2]);
+    const totalSellingCosts = Number(r[3]);
+    const cogs = Number(r[4]);
+    const date = r[5].trim();
+
+    parsed.push({
+      title,
+      qty,
+      totalSales,
+      totalSellingCosts,
+      cogs,
+      date,
+      monthId: getMonthIdFromDate(date),
+      profit: totalSales - totalSellingCosts - cogs
+    });
+  }
+
+  return parsed;
+}
+
+function handleCsvUpload(file) {
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    const text = e.target.result;
+    const parsedSales = parseCsv(text);
+
+    sales = sales.concat(parsedSales);
+    lastUpdated = new Date().toISOString().slice(0, 10);
+
+    saveData();
+    renderDashboard();
+  };
+
+  reader.readAsText(file);
+}
+
+/* ================================
+   MONTH CLOSING
+   ================================ */
+
+function closeMonth() {
+  const totals = getCurrentMonthTotals();
+
+  monthArchive[currentMonthId] = {
+    profit: totals.profit,
+    salaryPaid: totals.salaryPaid,
+    inventoryBudget: salaryGoal,
+    inventorySpent: totals.inventorySpent,
+    businessSavings: totals.profit - totals.salaryPaid
+  };
+
+  saveData();
+  renderDashboard();
+}
+/* ================================
+   EVENT LISTENERS
+   ================================ */
+
+function initEventHandlers() {
+  /* ---- CSV Upload ---- */
+  const csvInput = document.getElementById("csvFileInput");
+  const csvBtn = document.getElementById("loadCsvBtn");
+
+  if (csvBtn && csvInput) {
+    csvBtn.addEventListener("click", () => csvInput.click());
+    csvInput.addEventListener("change", e => {
+      if (e.target.files.length > 0) {
+        handleCsvUpload(e.target.files[0]);
       }
+    });
+  }
 
-      sales = sales.concat(rows);
-      saveJSON(STORAGE_KEYS.sales, sales);
+  /* ---- Add Purchase ---- */
+  const purchaseBtn = document.getElementById("addPurchaseBtn");
+  if (purchaseBtn) {
+    purchaseBtn.addEventListener("click", () => {
+      const desc = document.getElementById("purchaseDesc").value.trim();
+      const amount = Number(document.getElementById("purchaseAmount").value);
+      const itemCount = Number(document.getElementById("purchaseItemCount").value);
+      const date = document.getElementById("purchaseDate").value;
 
-      statusEl.textContent = `Loaded ${rows.length} sales.`;
-      setTimeout(() => (statusEl.textContent = ""), 2500);
+      if (!desc || !amount || !itemCount || !date) return;
 
-      recomputeGlobalSummary();
-      renderSalesTable();
+      addPurchase({
+        desc,
+        amount,
+        itemCount,
+        costPerItem: amount / itemCount,
+        date
+      });
+
+      document.getElementById("purchaseDesc").value = "";
+      document.getElementById("purchaseAmount").value = "";
+      document.getElementById("purchaseItemCount").value = "";
+      document.getElementById("purchaseDate").value = "";
+    });
+  }
+
+  /* ---- Salary Buttons ---- */
+  const paySalaryBtn = document.getElementById("paySalaryBtn");
+  const payFullSalaryBtn = document.getElementById("payFullSalaryBtn");
+
+  if (paySalaryBtn) {
+    paySalaryBtn.addEventListener("click", () => {
+      const amt = Number(document.getElementById("salaryAmount").value);
+      if (amt > 0) paySalary(amt);
+    });
+  }
+
+  if (payFullSalaryBtn) {
+    payFullSalaryBtn.addEventListener("click", () => {
+      payFullSalaryGoal();
+    });
+  }
+
+  /* ---- Close Month ---- */
+  const closeMonthBtn = document.getElementById("closeMonthBtn");
+  if (closeMonthBtn) {
+    closeMonthBtn.addEventListener("click", () => {
+      closeMonth();
+    });
+  }
+}
+
+/* ================================
+   INITIALIZATION
+   ================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+
+  /* If no month is set, default to current */
+  if (!currentMonthId) {
+    const today = new Date().toISOString().slice(0, 10);
+    currentMonthId = getMonthIdFromDate(today);
+  }
+
+  initEventHandlers();
+  renderDashboard();
+});
+
+/* ================================
+   END OF FILE — PART 3 COMPLETE
+   ================================ */
