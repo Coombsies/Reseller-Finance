@@ -1,6 +1,6 @@
 /* ================================
    Reseller Finance Dashboard (NEW SCHEMA)
-   Fully Rebuilt app.js — PART 1 OF 3
+   Full Rebuild app.js
    ================================ */
 
 /*  
@@ -106,6 +106,7 @@ function getMonthIdFromDate(dateStr) {
 }
 
 function formatCurrency(num) {
+  if (isNaN(num)) num = 0;
   return "$" + num.toFixed(2);
 }
 
@@ -139,28 +140,41 @@ function getCurrentMonthTotals() {
 function renderDashboard() {
   const totals = getCurrentMonthTotals();
 
-  document.getElementById("totalRevenue").textContent = formatCurrency(totals.revenue);
-  document.getElementById("totalCogs").textContent = formatCurrency(totals.cogs);
-  document.getElementById("totalProfit").textContent = formatCurrency(totals.profit);
-  document.getElementById("inventorySpent").textContent = formatCurrency(totals.inventorySpent);
-  document.getElementById("salaryPaid").textContent = formatCurrency(totals.salaryPaid);
+  const totalRevenueEl = document.getElementById("totalRevenue");
+  const totalCogsEl = document.getElementById("totalCogs");
+  const totalProfitEl = document.getElementById("totalProfit");
+  const inventorySpentEl = document.getElementById("inventorySpent");
+  const salaryPaidEl = document.getElementById("salaryPaid");
+  const salaryGoalDisplayEl = document.getElementById("salaryGoalDisplay");
+  const currentMonthLabelEl = document.getElementById("currentMonthLabel");
+  const lastUpdatedEl = document.getElementById("lastUpdated");
 
-  document.getElementById("salaryGoalDisplay").textContent = formatCurrency(salaryGoal);
-  document.getElementById("currentMonthLabel").textContent = currentMonthId;
-  document.getElementById("lastUpdated").textContent = lastUpdated;
+  if (!totalRevenueEl) return; // hard guard if HTML not loaded
+
+  totalRevenueEl.textContent = formatCurrency(totals.revenue);
+  totalCogsEl.textContent = formatCurrency(totals.cogs);
+  totalProfitEl.textContent = formatCurrency(totals.profit);
+  inventorySpentEl.textContent = formatCurrency(totals.inventorySpent);
+  salaryPaidEl.textContent = formatCurrency(totals.salaryPaid);
+
+  salaryGoalDisplayEl.textContent = formatCurrency(salaryGoal);
+  currentMonthLabelEl.textContent = currentMonthId;
+  lastUpdatedEl.textContent = lastUpdated || "N/A";
 
   renderSalesTable();
   renderPurchasesTable();
   renderSalaryTable();
+  renderArchiveSnapshot();
 }
 
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   const monthSales = sales.filter(s => s.monthId === currentMonthId);
 
-  monthSales.forEach((s, i) => {
+  monthSales.forEach(s => {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
@@ -179,6 +193,7 @@ function renderSalesTable() {
 
 function renderPurchasesTable() {
   const tbody = document.getElementById("purchasesTableBody");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   const monthPurchases = purchases.filter(p => p.monthId === currentMonthId);
@@ -200,6 +215,7 @@ function renderPurchasesTable() {
 
 function renderSalaryTable() {
   const tbody = document.getElementById("salaryTableBody");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   const monthSalary = salaryPayments.filter(sp => sp.monthId === currentMonthId);
@@ -216,9 +232,30 @@ function renderSalaryTable() {
   });
 }
 
-/* ================================
-   PART 1 END — WAIT FOR PART 2
-   ================================ */
+function renderArchiveSnapshot() {
+  const archived = monthArchive[currentMonthId] || {
+    profit: 0,
+    salaryPaid: 0,
+    inventoryBudget: salaryGoal,
+    inventorySpent: 0,
+    businessSavings: 0
+  };
+
+  const ap = document.getElementById("archivedProfit");
+  const as = document.getElementById("archivedSalaryPaid");
+  const ab = document.getElementById("archivedInventoryBudget");
+  const ai = document.getElementById("archivedInventorySpent");
+  const bs = document.getElementById("archivedBusinessSavings");
+
+  if (!ap) return;
+
+  ap.textContent = formatCurrency(archived.profit);
+  as.textContent = formatCurrency(archived.salaryPaid);
+  ab.textContent = formatCurrency(archived.inventoryBudget);
+  ai.textContent = formatCurrency(archived.inventorySpent);
+  bs.textContent = formatCurrency(archived.businessSavings);
+}
+
 /* ================================
    ADDING SALES
    ================================ */
@@ -268,16 +305,17 @@ function paySalary(amount) {
 }
 
 function payFullSalaryGoal() {
-  paySalary(salaryGoal);
+  if (salaryGoal > 0) {
+    paySalary(salaryGoal);
+  }
 }
 
 /* ================================
-   CSV IMPORT
+   CSV IMPORT / EXPORT
    ================================ */
 
 function parseCsv(text) {
   const rows = text.trim().split("\n").map(r => r.split(","));
-
   const parsed = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -324,6 +362,46 @@ function handleCsvUpload(file) {
   reader.readAsText(file);
 }
 
+function buildSalesCsv() {
+  const headers = [
+    "Title",
+    "Qty",
+    "TotalSales",
+    "TotalSellingCosts",
+    "COGS",
+    "Date"
+  ];
+
+  const rows = [headers.join(",")];
+
+  sales.forEach(s => {
+    rows.push([
+      s.title,
+      s.qty,
+      s.totalSales,
+      s.totalSellingCosts,
+      s.cogs,
+      s.date
+    ].join(","));
+  });
+
+  return rows.join("\n");
+}
+
+function downloadSalesCsv() {
+  const csv = buildSalesCsv();
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sales_${currentMonthId || "all"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 /* ================================
    MONTH CLOSING
    ================================ */
@@ -339,9 +417,12 @@ function closeMonth() {
     businessSavings: totals.profit - totals.salaryPaid
   };
 
+  lastUpdated = new Date().toISOString().slice(0, 10);
+
   saveData();
   renderDashboard();
 }
+
 /* ================================
    EVENT LISTENERS
    ================================ */
@@ -350,6 +431,7 @@ function initEventHandlers() {
   /* ---- CSV Upload ---- */
   const csvInput = document.getElementById("csvFileInput");
   const csvBtn = document.getElementById("loadCsvBtn");
+  const downloadCsvBtn = document.getElementById("downloadCsvBtn");
 
   if (csvBtn && csvInput) {
     csvBtn.addEventListener("click", () => csvInput.click());
@@ -357,6 +439,12 @@ function initEventHandlers() {
       if (e.target.files.length > 0) {
         handleCsvUpload(e.target.files[0]);
       }
+    });
+  }
+
+  if (downloadCsvBtn) {
+    downloadCsvBtn.addEventListener("click", () => {
+      downloadSalesCsv();
     });
   }
 
@@ -383,6 +471,22 @@ function initEventHandlers() {
       document.getElementById("purchaseAmount").value = "";
       document.getElementById("purchaseItemCount").value = "";
       document.getElementById("purchaseDate").value = "";
+    });
+  }
+
+  /* ---- Salary Goal ---- */
+  const salaryGoalInput = document.getElementById("salaryGoalInput");
+  const setSalaryGoalBtn = document.getElementById("setSalaryGoalBtn");
+
+  if (setSalaryGoalBtn && salaryGoalInput) {
+    setSalaryGoalBtn.addEventListener("click", () => {
+      const val = Number(salaryGoalInput.value);
+      if (val >= 0) {
+        salaryGoal = val;
+        lastUpdated = new Date().toISOString().slice(0, 10);
+        saveData();
+        renderDashboard();
+      }
     });
   }
 
@@ -419,7 +523,6 @@ function initEventHandlers() {
 document.addEventListener("DOMContentLoaded", () => {
   loadData();
 
-  /* If no month is set, default to current */
   if (!currentMonthId) {
     const today = new Date().toISOString().slice(0, 10);
     currentMonthId = getMonthIdFromDate(today);
@@ -430,5 +533,5 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ================================
-   END OF FILE — PART 3 COMPLETE
+   END OF FILE
    ================================ */
