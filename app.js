@@ -135,7 +135,7 @@ function parseCsv(text) {
 }
 
 // ------------------------------
-// GLOBAL SUMMARY
+// ⭐ NEW GLOBAL SUMMARY ENGINE (REBUILT + SAFE)
 // ------------------------------
 function computeSaleProfit(sale) {
   return toNum(sale.totalSales) - toNum(sale.totalCosts) - toNum(sale.cogs);
@@ -160,6 +160,7 @@ function recomputeGlobalSummary() {
     totalQty += qty;
   });
 
+  // ⭐ Matches your REAL HTML IDs
   document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
   document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
   document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
@@ -168,6 +169,9 @@ function recomputeGlobalSummary() {
   document.getElementById("sellThroughRate").textContent =
     totalQty > 0 ? "100%" : "N/A";
 
+  // ------------------------------
+  // MONTH SUMMARY (unchanged)
+  // ------------------------------
   const { id, data } = getCurrentMonth();
   const monthSales = sales.filter(s => s.monthId === id);
 
@@ -196,7 +200,6 @@ function recomputeGlobalSummary() {
   updateSalaryProgressBar();
   renderMonthArchive();
 }
-
 // ------------------------------
 // DELETE FUNCTIONS
 // ------------------------------
@@ -328,14 +331,13 @@ function renderSalaryPayments() {
 }
 
 // ------------------------------
-// ⭐ SALARY GOAL SYSTEM (FIXED)
+// SALARY GOAL SYSTEM
 // ------------------------------
 function initSalaryGoal() {
   const goalInput = document.getElementById("salaryGoalInput");
   const goalDisplay = document.getElementById("salaryGoalDisplay");
   const updateBtn = document.getElementById("updateSalaryGoalBtn");
 
-  // Load saved goal
   goalInput.value = settings.salaryGoal || "";
   goalDisplay.textContent = formatCurrency(settings.salaryGoal || 0);
 
@@ -357,7 +359,7 @@ function initSalaryGoal() {
 }
 
 // ------------------------------
-// SALARY SYSTEM (UPDATED)
+// SALARY SYSTEM
 // ------------------------------
 function initSalaryPayments() {
   const payInput = document.getElementById("salaryPayInput");
@@ -434,7 +436,7 @@ function updateSalaryProgressBar() {
 }
 
 // ------------------------------
-// PURCHASES (UPDATED)
+// PURCHASES
 // ------------------------------
 function initPurchases() {
   const dateEl = document.getElementById("purchaseDate");
@@ -639,7 +641,7 @@ function initCloseMonth() {
 function init() {
   getCurrentMonth();
 
-  initSalaryGoal();      // ⭐ Added salary goal system
+  initSalaryGoal();
   initCsvImport();
   initManualSaleEntry();
   initPurchases();
@@ -655,5 +657,3 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-
-
