@@ -135,8 +135,12 @@ function parseCsv(text) {
 }
 
 // ------------------------------
-// ⭐ NEW GLOBAL SUMMARY ENGINE (REBUILT + SAFE)
+// GLOBAL SUMMARY
 // ------------------------------
+function computeSaleProfit(sale) {
+  return toNum(sale.totalSales) - toNum(sale.totalCosts) - toNum(sale.cogs);
+}
+
 function recomputeGlobalSummary() {
   let totalRevenue = 0;
   let totalCogs = 0;
@@ -156,7 +160,6 @@ function recomputeGlobalSummary() {
     totalQty += qty;
   });
 
-  // ⭐ Correct IDs from your HTML
   document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
   document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
   document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
@@ -165,9 +168,6 @@ function recomputeGlobalSummary() {
   document.getElementById("sellThroughRate").textContent =
     totalQty > 0 ? "100%" : "N/A";
 
-  // ------------------------------
-  // MONTH SUMMARY (unchanged)
-  // ------------------------------
   const { id, data } = getCurrentMonth();
   const monthSales = sales.filter(s => s.monthId === id);
 
@@ -328,35 +328,7 @@ function renderSalaryPayments() {
 }
 
 // ------------------------------
-// SALARY GOAL SYSTEM
-// ------------------------------
-function initSalaryGoal() {
-  const goalInput = document.getElementById("salaryGoalInput");
-  const goalDisplay = document.getElementById("salaryGoalDisplay");
-  const updateBtn = document.getElementById("updateSalaryGoalBtn");
-
-  goalInput.value = settings.salaryGoal || "";
-  goalDisplay.textContent = formatCurrency(settings.salaryGoal || 0);
-
-  updateBtn.addEventListener("click", () => {
-    const newGoal = toNum(goalInput.value);
-
-    if (newGoal <= 0) {
-      alert("Enter a valid salary goal.");
-      return;
-    }
-
-    settings.salaryGoal = newGoal;
-    saveJSON(STORAGE_KEYS.settings, settings);
-
-    goalDisplay.textContent = formatCurrency(newGoal);
-
-    recomputeGlobalSummary();
-  });
-}
-
-// ------------------------------
-// SALARY SYSTEM
+// SALARY SYSTEM (UPDATED)
 // ------------------------------
 function initSalaryPayments() {
   const payInput = document.getElementById("salaryPayInput");
@@ -433,7 +405,7 @@ function updateSalaryProgressBar() {
 }
 
 // ------------------------------
-// PURCHASES
+// PURCHASES (UPDATED)
 // ------------------------------
 function initPurchases() {
   const dateEl = document.getElementById("purchaseDate");
@@ -582,7 +554,7 @@ function initClearData() {
     sales = [];
     saveJSON(STORAGE_KEYS.sales, sales);
 
-    statusEl.textContent = "All sales cleared.";
+       statusEl.textContent = "All sales cleared.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     recomputeGlobalSummary();
@@ -638,7 +610,6 @@ function initCloseMonth() {
 function init() {
   getCurrentMonth();
 
-  initSalaryGoal();
   initCsvImport();
   initManualSaleEntry();
   initPurchases();
