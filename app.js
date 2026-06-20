@@ -37,6 +37,10 @@ function getCurrentMonthId() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function todayISO() {
+  return new Date().toISOString().split("T")[0];
+}
+
 // ------------------------------
 // LOAD DATA
 // ------------------------------
@@ -107,6 +111,8 @@ function parseCsv(text) {
     row.push(current);
     rows.push(row);
   }
+
+  if (rows.length === 0) return [];
 
   const header = rows.shift().map(h => h.trim().toLowerCase());
 
@@ -221,8 +227,9 @@ function deleteSalaryPayment(index) {
   renderSalaryPayments();
   recomputeGlobalSummary();
 }
+
 // ------------------------------
-// RENDER TABLES (continued)
+// RENDER TABLES
 // ------------------------------
 function renderSalesTable() {
   const tbody = document.getElementById("salesTableBody");
@@ -270,8 +277,11 @@ function renderPurchaseTable() {
   monthPurchases.forEach((p, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${p.date}</td>
       <td>${p.desc}</td>
-      <td>${formatCurrency(toNum(p.amount))}</td>
+      <td>${formatCurrency(toNum(p.totalPrice))}</td>
+      <td>${p.qty}</td>
+      <td>${formatCurrency(p.cogsPerItem || 0)}</td>
       <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
@@ -328,9 +338,26 @@ function renderSalaryPayments() {
 // ------------------------------
 function initSalaryPayments() {
   const payInput = document.getElementById("salaryPayInput");
+  const payDateInput = document.getElementById("salaryDateInput");
   const payBtn = document.getElementById("paySalaryBtn");
   const payFullBtn = document.getElementById("payFullSalaryBtn");
   const statusEl = document.getElementById("salaryStatus");
+  const goalInput = document.getElementById("salaryGoalInput");
+  const updateGoalBtn = document.getElementById("updateSalaryGoalBtn");
+
+  // load existing goal
+  if (settings.salaryGoal) {
+    goalInput.value = settings.salaryGoal;
+  }
+
+  updateGoalBtn.addEventListener("click", () => {
+    const goal = toNum(goalInput.value);
+    settings.salaryGoal = goal;
+    saveJSON(STORAGE_KEYS.settings, settings);
+    statusEl.textContent = "Salary goal updated.";
+    setTimeout(() => (statusEl.textContent = ""), 2500);
+    recomputeGlobalSummary();
+  });
 
   payBtn.addEventListener("click", () => {
     const amount = toNum(payInput.value);
@@ -342,8 +369,10 @@ function initSalaryPayments() {
     const { data } = getCurrentMonth();
     data.salaryPaid = (data.salaryPaid || 0) + amount;
 
+    const date = payDateInput.value || todayISO();
+
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date,
       amount
     });
 
@@ -368,10 +397,12 @@ function initSalaryPayments() {
       return;
     }
 
+    const date = payDateInput.value || todayISO();
+
     data.salaryPaid += remaining;
 
     data.salaryPayments.push({
-      date: new Date().toISOString().split("T")[0],
+      date,
       amount: remaining
     });
 
@@ -398,24 +429,38 @@ function updateSalaryProgressBar() {
 // PURCHASES
 // ------------------------------
 function initPurchases() {
+  const dateEl = document.getElementById("purchaseDate");
   const descEl = document.getElementById("purchaseDesc");
-  const amountEl = document.getElementById("purchaseAmount");
+  const priceEl = document.getElementById("purchasePrice");
+  const qtyEl = document.getElementById("purchaseQty");
   const btn = document.getElementById("addPurchaseBtn");
   const statusEl = document.getElementById("purchaseStatus");
 
   btn.addEventListener("click", () => {
+    const date = dateEl.value || todayISO();
     const desc = descEl.value.trim();
-    const amount = toNum(amountEl.value);
+    const totalPrice = toNum(priceEl.value);
+    const qty = Number(qtyEl.value || 0);
 
-    if (!desc || amount <= 0) {
-      statusEl.textContent = "Enter a description and amount.";
+    if (!desc || totalPrice <= 0 || qty <= 0) {
+      statusEl.textContent = "Enter date, description, total price, and quantity.";
       return;
     }
 
+    const cogsPerItem = totalPrice / qty;
+
     const { id, data } = getCurrentMonth();
 
-    purchases.push({ desc, amount, monthId: id });
-    data.inventorySpent = (data.inventorySpent || 0) + amount;
+    purchases.push({
+      date,
+      desc,
+      totalPrice,
+      qty,
+      cogsPerItem,
+      monthId: id
+    });
+
+    data.inventorySpent = (data.inventorySpent || 0) + totalPrice;
 
     saveJSON(STORAGE_KEYS.purchases, purchases);
     saveJSON(STORAGE_KEYS.months, months);
@@ -423,8 +468,10 @@ function initPurchases() {
     statusEl.textContent = "Purchase added.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
+    dateEl.value = "";
     descEl.value = "";
-    amountEl.value = "";
+    priceEl.value = "";
+    qtyEl.value = "";
 
     renderPurchaseTable();
     recomputeGlobalSummary();
