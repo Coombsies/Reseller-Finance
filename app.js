@@ -137,10 +137,6 @@ function parseCsv(text) {
 // ------------------------------
 // ⭐ NEW GLOBAL SUMMARY ENGINE (REBUILT + SAFE)
 // ------------------------------
-function computeSaleProfit(sale) {
-  return toNum(sale.totalSales) - toNum(sale.totalCosts) - toNum(sale.cogs);
-}
-
 function recomputeGlobalSummary() {
   let totalRevenue = 0;
   let totalCogs = 0;
@@ -160,7 +156,7 @@ function recomputeGlobalSummary() {
     totalQty += qty;
   });
 
-  // ⭐ Matches your REAL HTML IDs
+  // ⭐ Correct IDs from your HTML
   document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
   document.getElementById("totalCogs").textContent = formatCurrency(totalCogs);
   document.getElementById("totalProfit").textContent = formatCurrency(totalProfit);
@@ -200,6 +196,7 @@ function recomputeGlobalSummary() {
   updateSalaryProgressBar();
   renderMonthArchive();
 }
+
 // ------------------------------
 // DELETE FUNCTIONS
 // ------------------------------
