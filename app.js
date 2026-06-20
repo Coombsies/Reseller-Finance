@@ -328,6 +328,35 @@ function renderSalaryPayments() {
 }
 
 // ------------------------------
+// ⭐ SALARY GOAL SYSTEM (FIXED)
+// ------------------------------
+function initSalaryGoal() {
+  const goalInput = document.getElementById("salaryGoalInput");
+  const goalDisplay = document.getElementById("salaryGoalDisplay");
+  const updateBtn = document.getElementById("updateSalaryGoalBtn");
+
+  // Load saved goal
+  goalInput.value = settings.salaryGoal || "";
+  goalDisplay.textContent = formatCurrency(settings.salaryGoal || 0);
+
+  updateBtn.addEventListener("click", () => {
+    const newGoal = toNum(goalInput.value);
+
+    if (newGoal <= 0) {
+      alert("Enter a valid salary goal.");
+      return;
+    }
+
+    settings.salaryGoal = newGoal;
+    saveJSON(STORAGE_KEYS.settings, settings);
+
+    goalDisplay.textContent = formatCurrency(newGoal);
+
+    recomputeGlobalSummary();
+  });
+}
+
+// ------------------------------
 // SALARY SYSTEM (UPDATED)
 // ------------------------------
 function initSalaryPayments() {
@@ -554,7 +583,7 @@ function initClearData() {
     sales = [];
     saveJSON(STORAGE_KEYS.sales, sales);
 
-       statusEl.textContent = "All sales cleared.";
+    statusEl.textContent = "All sales cleared.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     recomputeGlobalSummary();
@@ -610,6 +639,7 @@ function initCloseMonth() {
 function init() {
   getCurrentMonth();
 
+  initSalaryGoal();      // ⭐ Added salary goal system
   initCsvImport();
   initManualSaleEntry();
   initPurchases();
