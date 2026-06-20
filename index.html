@@ -67,6 +67,9 @@
         <label>Pay Salary Amount
           <input type="number" id="salaryPayInput" step="0.01" />
         </label>
+        <label>Salary Date
+          <input type="date" id="salaryDateInput" />
+        </label>
         <button id="paySalaryBtn" type="button">Pay Salary</button>
       </div>
 
@@ -130,11 +133,17 @@
       <!-- PURCHASES -->
       <h3>Add Inventory Purchase</h3>
       <div class="form-grid">
+        <label>Purchase Date
+          <input type="date" id="purchaseDate" />
+        </label>
         <label>Purchase Description
           <input type="text" id="purchaseDesc" />
         </label>
-        <label>Purchase Amount
-          <input type="number" id="purchaseAmount" step="0.01" />
+        <label>Purchase Price (total)
+          <input type="number" id="purchasePrice" step="0.01" />
+        </label>
+        <label>Item Amount (quantity)
+          <input type="number" id="purchaseQty" step="1" />
         </label>
       </div>
       <button id="addPurchaseBtn" type="button">Add Purchase</button>
@@ -144,8 +153,11 @@
         <table>
           <thead>
             <tr>
-              <th>Purchase</th>
-              <th>Amount</th>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Total Price</th>
+              <th>Quantity</th>
+              <th>COGS per Item</th>
               <th>Delete</th>
             </tr>
           </thead>
@@ -242,6 +254,5 @@
   </footer>
 
   <script type="module" src="app.js?v=2"></script>
-
 </body>
 </html>
