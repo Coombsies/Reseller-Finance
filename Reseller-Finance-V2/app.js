@@ -4,7 +4,7 @@
  *  Includes:
  *   - Storage system
  *   - Utilities
- *   - Month system
+ *   - Month system (fixed)
  *   - Salary system
  *   - Purchase system
  *   - CSV import + parser
@@ -63,16 +63,17 @@ export function loadJSON(key, fallback) {
 }
 
 /* ====================================================
-   MONTH SYSTEM
+   MONTH SYSTEM (FIXED)
 ==================================================== */
 
-// Create a new month object
+// Create a new month object (used only on first run + after closing month)
 export function createNewMonth() {
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long" });
   const year = now.getFullYear();
 
-  const id = `${monthName}-${year}-${Date.now()}`;
+  // Stable id per month/year
+  const id = `${monthName}-${year}`;
 
   const newMonth = {
     id,
@@ -84,32 +85,49 @@ export function createNewMonth() {
     businessSavings: 0
   };
 
-  months.push(newMonth);
+  // Ensure this month exists in archive (update or push)
+  const existingIndex = months.findIndex(m => m.id === id);
+  if (existingIndex === -1) {
+    months.push(newMonth);
+  } else {
+    months[existingIndex] = newMonth;
+  }
+
   saveJSON(STORAGE_KEYS.months, months);
   saveJSON(STORAGE_KEYS.currentMonthId, id);
 
   return newMonth;
 }
 
-// Get current month object
+// Get current month object WITHOUT auto-creating new months on refresh
 export function getCurrentMonth() {
   let id = localStorage.getItem(STORAGE_KEYS.currentMonthId);
 
-  if (!id) {
+  // If no months at all, create the first one
+  if (!months || months.length === 0) {
     const m = createNewMonth();
     return m;
   }
 
+  // If we have months but no currentMonthId, default to the last month
+  if (!id) {
+    const last = months[months.length - 1];
+    saveJSON(STORAGE_KEYS.currentMonthId, last.id);
+    return last;
+  }
+
+  // Try to find the current month in archive
   const found = months.find(m => m.id === id);
   if (!found) {
-    const m = createNewMonth();
-    return m;
+    const last = months[months.length - 1];
+    saveJSON(STORAGE_KEYS.currentMonthId, last.id);
+    return last;
   }
 
   return found;
 }
 
-// Close current month and create next
+// Close current month and create next (archive only when this is called)
 export function closeCurrentMonth() {
   const month = getCurrentMonth();
 
@@ -124,9 +142,17 @@ export function closeCurrentMonth() {
     .filter(p => p.monthId === month.id)
     .reduce((sum, p) => sum + toNum(p.price), 0);
 
+  // Persist updated month in archive
+  const idx = months.findIndex(m => m.id === month.id);
+  if (idx === -1) {
+    months.push(month);
+  } else {
+    months[idx] = month;
+  }
+
   saveJSON(STORAGE_KEYS.months, months);
 
-  // Create next month
+  // Create next month as the new current
   const newMonth = createNewMonth();
   return newMonth;
 }
@@ -803,7 +829,7 @@ export function init() {
       "Full remaining salary paid.";
   });
 
-  /* CLOSE MONTH */
+  /* CLOSE MONTH (ENDER ABOVE ARCHIVE IN UI) */
   document.getElementById("closeMonthBtn").addEventListener("click", () => {
     closeCurrentMonth();
     renderMonthSummary();
