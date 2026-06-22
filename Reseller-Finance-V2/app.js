@@ -50,6 +50,18 @@ let settings = loadJSON(STORAGE_KEYS.settings, { salaryGoal: 0 });
 let months = loadJSON(STORAGE_KEYS.months, {});
 
 // ------------------------------
+// BACKWARD COMPATIBILITY FIX
+// Add remainingQty to old purchases
+// ------------------------------
+purchases = purchases.map(p => {
+  if (p.remainingQty === undefined) {
+    p.remainingQty = Number(p.qty || 0);
+  }
+  return p;
+});
+saveJSON(STORAGE_KEYS.purchases, purchases);
+
+// ------------------------------
 // MONTH LOGIC
 // ------------------------------
 function ensureMonthExists(monthId) {
@@ -202,22 +214,49 @@ function recomputeGlobalSummary() {
   updateSalaryProgressBar();
   renderMonthArchive();
 }
-
 // ------------------------------
-// DELETE FUNCTIONS
+// DELETE FUNCTIONS (UPDATED FOR LINKED SALES)
 // ------------------------------
 function deleteSale(index) {
+  const sale = sales[index];
+
+  // If sale was linked to a purchase, restore inventory
+  if (sale.linkedPurchaseId) {
+    const p = purchases.find(p => p.id === sale.linkedPurchaseId);
+    if (p) {
+      p.remainingQty += Number(sale.linkedQty || 1);
+      saveJSON(STORAGE_KEYS.purchases, purchases);
+    }
+  }
+
   sales.splice(index, 1);
   saveJSON(STORAGE_KEYS.sales, sales);
+
   recomputeGlobalSummary();
   renderSalesTable();
+  renderPurchaseTable();
 }
 
 function deletePurchase(index) {
+  const purchase = purchases[index];
+
+  // Unlink any sales tied to this purchase
+  sales = sales.map(s => {
+    if (s.linkedPurchaseId === purchase.id) {
+      delete s.linkedPurchaseId;
+      delete s.linkedQty;
+    }
+    return s;
+  });
+
   purchases.splice(index, 1);
+
+  saveJSON(STORAGE_KEYS.sales, sales);
   saveJSON(STORAGE_KEYS.purchases, purchases);
+
   recomputeGlobalSummary();
   renderPurchaseTable();
+  renderSalesTable();
 }
 
 function deleteSalaryPayment(index) {
@@ -236,11 +275,15 @@ function renderSalesTable() {
   tbody.innerHTML = "";
 
   sales.forEach((sale, index) => {
-    const tr = document.createElement("tr");
     const profit = computeSaleProfit(sale);
 
+    const linkedInfo = sale.linkedPurchaseId
+      ? `<div class="linked-note">Linked to: ${sale.linkedPurchaseId} (${sale.linkedQty})</div>`
+      : "";
+
+    const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${sale.title}</td>
+      <td>${sale.title}${linkedInfo}</td>
       <td>${sale.qty}</td>
       <td>${formatCurrency(toNum(sale.totalSales))}</td>
       <td>${formatCurrency(toNum(sale.totalCosts))}</td>
@@ -252,6 +295,7 @@ function renderSalesTable() {
     tbody.appendChild(tr);
   });
 
+  // COGS editing
   tbody.querySelectorAll(".cogs-input").forEach(input => {
     input.addEventListener("change", e => {
       const idx = Number(e.target.dataset.index);
@@ -262,6 +306,7 @@ function renderSalesTable() {
     });
   });
 
+  // Delete buttons
   tbody.querySelectorAll(".delete-btn").forEach(btn => {
     btn.addEventListener("click", e => deleteSale(Number(e.target.dataset.index)));
   });
@@ -282,6 +327,7 @@ function renderPurchaseTable() {
       <td>${formatCurrency(toNum(p.totalPrice))}</td>
       <td>${p.qty}</td>
       <td>${formatCurrency(p.cogsPerItem || 0)}</td>
+      <td>${p.remainingQty} left</td>
       <td><button class="delete-btn" data-index="${index}">Delete</button></td>
     `;
     tbody.appendChild(tr);
@@ -332,7 +378,6 @@ function renderSalaryPayments() {
     btn.addEventListener("click", e => deleteSalaryPayment(Number(e.target.dataset.index)));
   });
 }
-
 // ------------------------------
 // SALARY SYSTEM
 // ------------------------------
@@ -345,7 +390,6 @@ function initSalaryPayments() {
   const goalInput = document.getElementById("salaryGoalInput");
   const updateGoalBtn = document.getElementById("updateSalaryGoalBtn");
 
-  // load existing goal
   if (settings.salaryGoal) {
     goalInput.value = settings.salaryGoal;
   }
@@ -451,12 +495,16 @@ function initPurchases() {
 
     const { id, data } = getCurrentMonth();
 
+    const purchaseId = "p_" + Date.now();
+
     purchases.push({
+      id: purchaseId,
       date,
       desc,
       totalPrice,
       qty,
       cogsPerItem,
+      remainingQty: qty,
       monthId: id
     });
 
@@ -479,48 +527,101 @@ function initPurchases() {
 }
 
 // ------------------------------
-// MANUAL SALES
+// MANUAL SALES (UPGRADED)
 // ------------------------------
 function initManualSaleEntry() {
   const titleEl = document.getElementById("manualTitle");
+  const qtyEl = document.getElementById("manualQty");
   const saleEl = document.getElementById("manualSale");
   const costsEl = document.getElementById("manualCosts");
   const cogsEl = document.getElementById("manualCogs");
+  const purchaseSelect = document.getElementById("linkedPurchaseSelect");
   const btn = document.getElementById("addSaleBtn");
   const statusEl = document.getElementById("manualStatus");
 
+  // Populate dropdown
+  function refreshPurchaseDropdown() {
+    purchaseSelect.innerHTML = `<option value="">-- None / Manual COGS --</option>`;
+
+    const { id } = getCurrentMonth();
+    const monthPurchases = purchases.filter(
+      p => p.monthId === id && p.remainingQty > 0
+    );
+
+    monthPurchases.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = `${p.date} — ${p.desc} (${p.remainingQty} left)`;
+      purchaseSelect.appendChild(opt);
+    });
+  }
+
+  refreshPurchaseDropdown();
+
   btn.addEventListener("click", () => {
     const title = titleEl.value.trim();
+    const qty = Number(qtyEl.value || 1);
     const totalSales = toNum(saleEl.value);
     const totalCosts = toNum(costsEl.value);
-    const cogs = toNum(cogsEl.value);
+    let cogs = toNum(cogsEl.value);
 
-    if (!title || totalSales <= 0) {
-      statusEl.textContent = "Enter at least a title and total sales.";
+    if (!title || totalSales <= 0 || qty <= 0) {
+      statusEl.textContent = "Enter title, qty, and total sales.";
       return;
+    }
+
+    const linkedId = purchaseSelect.value;
+    let linkedQty = null;
+
+    if (linkedId) {
+      const p = purchases.find(p => p.id === linkedId);
+      if (!p) {
+        statusEl.textContent = "Purchase not found.";
+        return;
+      }
+
+      if (qty > p.remainingQty) {
+        statusEl.textContent = "Not enough inventory in this purchase.";
+        return;
+      }
+
+      // Auto COGS
+      cogs = p.cogsPerItem * qty;
+
+      // Reduce inventory
+      p.remainingQty -= qty;
+      saveJSON(STORAGE_KEYS.purchases, purchases);
+
+      linkedQty = qty;
     }
 
     sales.push({
       title,
-      qty: 1,
+      qty,
       totalSales,
       totalCosts,
       cogs,
-      monthId: getCurrentMonthId()
+      monthId: getCurrentMonthId(),
+      linkedPurchaseId: linkedId || null,
+      linkedQty: linkedQty || null
     });
 
     saveJSON(STORAGE_KEYS.sales, sales);
 
-    statusEl.textContent = "Manual sale added.";
+    statusEl.textContent = "Sale added.";
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
     titleEl.value = "";
+    qtyEl.value = "1";
     saleEl.value = "";
     costsEl.value = "";
     cogsEl.value = "";
+    purchaseSelect.value = "";
 
     recomputeGlobalSummary();
     renderSalesTable();
+    renderPurchaseDropdown();
+    renderPurchaseTable();
   });
 }
 
@@ -646,4 +747,3 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-
