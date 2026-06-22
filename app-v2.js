@@ -75,7 +75,7 @@ function getCurrentMonth() {
 }
 
 // ------------------------------
-// CSV PARSER (SAFE FOR COMMAS)
+// CSV PARSER
 // ------------------------------
 function parseCsv(text) {
   const rows = [];
@@ -345,7 +345,6 @@ function initSalaryPayments() {
   const goalInput = document.getElementById("salaryGoalInput");
   const updateGoalBtn = document.getElementById("updateSalaryGoalBtn");
 
-  // load existing goal
   if (settings.salaryGoal) {
     goalInput.value = settings.salaryGoal;
   }
@@ -552,6 +551,7 @@ function initCsvImport() {
       saveJSON(STORAGE_KEYS.sales, sales);
 
       statusEl.textContent = `Loaded ${rows.length} sales.`;
+      statusEl.textContent = `Loaded ${rows.length} sales.`;
       setTimeout(() => (statusEl.textContent = ""), 2500);
 
       recomputeGlobalSummary();
@@ -604,6 +604,7 @@ function initCloseMonth() {
     statusEl.textContent = `Month ${id} closed.`;
     setTimeout(() => (statusEl.textContent = ""), 2500);
 
+    // Move to next month
     let [year, month] = id.split("-").map(Number);
     month++;
     if (month > 12) {
