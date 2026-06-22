@@ -740,10 +740,10 @@ function init() {
   initSalaryPayments();
 
   recomputeGlobalSummary();
-  renderSalesTable();
-  renderPurchaseTable();
-  renderMonthArchive();
-  renderSalaryPayments();
+renderSalesTable();
+refreshPurchaseDropdown();
+renderPurchaseTable();
+
 }
 
 document.addEventListener("DOMContentLoaded", init);
